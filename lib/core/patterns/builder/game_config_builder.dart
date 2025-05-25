@@ -1,7 +1,5 @@
 import 'dart:convert';
 
-import 'package:injectable/injectable.dart';
-
 // Product class
 class GameConfig {
   final int timeControlMinutes;

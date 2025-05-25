@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:chess_game/core/models/chess_piece.dart';
-import 'package:chess_game/core/models/position.dart';
 import 'package:chess_game/core/patterns/command/command.dart';
 
 // Context for the AI strategy

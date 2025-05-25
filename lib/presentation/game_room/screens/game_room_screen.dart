@@ -7,7 +7,6 @@ import 'package:chess_game/di/injection.dart';
 import 'package:chess_game/presentation/game_room/bloc/game_room_bloc.dart';
 import 'package:chess_game/presentation/game_room/widgets/chess_board.dart';
 import 'package:chess_game/presentation/game_room/widgets/game_over_dialog.dart';
-import 'package:chess_game/router/app_router.dart';
 import 'package:chess_game/theme/app_theme.dart';
 import 'package:chess_game/theme/font/app_font_weight.dart';
 import 'package:chess_game/theme/spacing/app_spacing.dart';
