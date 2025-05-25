@@ -1,16 +1,16 @@
 import 'dart:convert';
 
-class GameRoomModel {
+class GameRoomEntity {
   final String id;
   final String json;
 
-  GameRoomModel({
+  GameRoomEntity({
     required this.id,
     required this.json,
   });
 
-  factory GameRoomModel.fromMap(Map<String, dynamic> map) {
-    return GameRoomModel(
+  factory GameRoomEntity.fromMap(Map<String, dynamic> map) {
+    return GameRoomEntity(
       id: map['id'],
       json: map['json'],
     );
@@ -25,5 +25,5 @@ class GameRoomModel {
 
   String toJson() => jsonEncode(toMap());
 
-  factory GameRoomModel.fromJson(String source) => GameRoomModel.fromMap(jsonDecode(source));
+  factory GameRoomEntity.fromJson(String source) => GameRoomEntity.fromMap(jsonDecode(source));
 }

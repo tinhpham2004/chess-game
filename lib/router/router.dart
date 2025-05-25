@@ -24,5 +24,5 @@ class BaseRouter {
     return router;
   }
 
-  String? _getInitialLocation() => AppRouter.homeScreen;
+  String? _getInitialLocation() => AppRouter.welcomeScreen;
 }
