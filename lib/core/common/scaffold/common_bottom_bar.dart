@@ -1,8 +1,8 @@
 import 'package:chess_game/di/injection.dart';
 import 'package:chess_game/router/app_router.dart';
 import 'package:chess_game/theme/app_theme.dart';
+import 'package:chess_game/theme/border/app_border_wh.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 class CommonBottomBar extends StatefulWidget {
   final String? title;
@@ -28,12 +28,10 @@ class CommonBottomBar extends StatefulWidget {
 
 class _CommonBottomBarState extends State<CommonBottomBar> {
   final _themeColor = getIt.get<AppTheme>().themeColor;
-  int selectedIndex = 0;
+  int _selectedIndex = 0;
 
   void _onBottomNavTap(int index) {
-    setState(() {
-      selectedIndex = index;
-    });
+    setState(() => _selectedIndex = index);
     switch (index) {
       case 0:
         AppRouter.go(AppRouter.playScreen);
@@ -51,7 +49,7 @@ class _CommonBottomBarState extends State<CommonBottomBar> {
         border: Border(
           top: BorderSide(
             color: _themeColor.borderColor.withOpacity(0.3),
-            width: 1,
+            width: AppBorderWH.xs,
           ),
         ),
         boxShadow: [
@@ -63,7 +61,7 @@ class _CommonBottomBarState extends State<CommonBottomBar> {
         ],
       ),
       child: BottomNavigationBar(
-        currentIndex: selectedIndex,
+        currentIndex: _selectedIndex,
         onTap: _onBottomNavTap,
         type: BottomNavigationBarType.fixed,
         backgroundColor: _themeColor.surfaceColor,
