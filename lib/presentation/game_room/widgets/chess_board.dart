@@ -1,9 +1,14 @@
+import 'package:chess_game/core/common/button/common_button.dart';
+import 'package:chess_game/theme/spacing/app_spacing.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:chess_game/core/models/chess_piece.dart';
 import 'package:chess_game/core/models/position.dart';
-import 'package:chess_game/presentation/assets/assets.gen.dart';
+import 'package:chess_game/presentation/game_room/widgets/chess_square.dart';
+import 'package:chess_game/presentation/game_room/widgets/animated_piece.dart';
+import 'package:chess_game/presentation/game_room/bloc/game_room_bloc.dart';
 
+// This widget has been refactored to use BLoC pattern instead of ChessLogicService
 class ChessBoard extends StatefulWidget {
   const ChessBoard({super.key});
 
@@ -12,129 +17,277 @@ class ChessBoard extends StatefulWidget {
 }
 
 class _ChessBoardState extends State<ChessBoard> {
-  // This will store our chess pieces
-  late List<List<ChessPiece?>> _board;
-
-  @override
-  void initState() {
-    super.initState();
-    _setupInitialBoard();
-  }
-
-  void _setupInitialBoard() {
-    // Initialize empty 8x8 board
-    _board = List.generate(8, (_) => List.generate(8, (_) => null));
-
-    // Set up initial pieces
-    // Pawns
-    for (int i = 0; i < 8; i++) {
-      _board[1][i] = _createPiece(PieceType.pawn, PieceColor.black, Position(i, 1));
-      _board[6][i] = _createPiece(PieceType.pawn, PieceColor.white, Position(i, 6));
-    }
-
-    // Rooks
-    _board[0][0] = _createPiece(PieceType.rook, PieceColor.black, Position(0, 0));
-    _board[0][7] = _createPiece(PieceType.rook, PieceColor.black, Position(7, 0));
-    _board[7][0] = _createPiece(PieceType.rook, PieceColor.white, Position(0, 7));
-    _board[7][7] = _createPiece(PieceType.rook, PieceColor.white, Position(7, 7));
-
-    // Knights
-    _board[0][1] = _createPiece(PieceType.knight, PieceColor.black, Position(1, 0));
-    _board[0][6] = _createPiece(PieceType.knight, PieceColor.black, Position(6, 0));
-    _board[7][1] = _createPiece(PieceType.knight, PieceColor.white, Position(1, 7));
-    _board[7][6] = _createPiece(PieceType.knight, PieceColor.white, Position(6, 7));
-
-    // Bishops
-    _board[0][2] = _createPiece(PieceType.bishop, PieceColor.black, Position(2, 0));
-    _board[0][5] = _createPiece(PieceType.bishop, PieceColor.black, Position(5, 0));
-    _board[7][2] = _createPiece(PieceType.bishop, PieceColor.white, Position(2, 7));
-    _board[7][5] = _createPiece(PieceType.bishop, PieceColor.white, Position(5, 7));
-
-    // Queens
-    _board[0][3] = _createPiece(PieceType.queen, PieceColor.black, Position(3, 0));
-    _board[7][3] = _createPiece(PieceType.queen, PieceColor.white, Position(3, 7));
-
-    // Kings
-    _board[0][4] = _createPiece(PieceType.king, PieceColor.black, Position(4, 0));
-    _board[7][4] = _createPiece(PieceType.king, PieceColor.white, Position(4, 7));
-  }
-
-  ChessPiece _createPiece(PieceType type, PieceColor color, Position position) {
-    switch (type) {
-      case PieceType.pawn:
-        return Pawn(color: color, position: position);
-      case PieceType.rook:
-        return Rook(color: color, position: position);
-      case PieceType.knight:
-        return Knight(color: color, position: position);
-      case PieceType.bishop:
-        return Bishop(color: color, position: position);
-      case PieceType.queen:
-        return Queen(color: color, position: position);
-      case PieceType.king:
-        return King(color: color, position: position);
-    }
-  }
-
-  String _getPieceAssetPath(ChessPiece piece) {
-    final isWhite = piece.color == PieceColor.white;
-
-    switch (piece.type) {
-      case PieceType.pawn:
-        return isWhite ? Assets.icons.pawnWhite : Assets.icons.pawnBlack;
-      case PieceType.rook:
-        return isWhite ? Assets.icons.rookWhite : Assets.icons.rookBlack;
-      case PieceType.knight:
-        return isWhite ? Assets.icons.knightWhite : Assets.icons.knightBlack;
-      case PieceType.bishop:
-        return isWhite ? Assets.icons.bishopWhite : Assets.icons.bishopBlack;
-      case PieceType.queen:
-        return isWhite ? Assets.icons.queenWhite : Assets.icons.queenBlack;
-      case PieceType.king:
-        return isWhite ? Assets.icons.kingWhite : Assets.icons.kingBlack;
-    }
-  }
+  Position? _hoveredPosition;
+  Position? _draggedPiecePosition;
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1, // Keep the board square
-      child: GridView.builder(
-        physics: const NeverScrollableScrollPhysics(), // Disable scrolling
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 8, // 8x8 grid for chess
-        ),
-        itemCount: 64, // 64 squares total
-        itemBuilder: (context, index) {
-          // Determine if this square is white or black
-          final row = index ~/ 8; // Integer division to get row number
-          final col = index % 8; // Modulo to get column number
-          final isWhite = (row + col) % 2 == 0;
+    return BlocBuilder<GameRoomBloc, GameRoomState>(
+      builder: (context, state) {
+        if (!state.gameStarted) {
+          return _buildStartGamePrompt(context);
+        }
 
-          // Get the piece at this position
-          final piece = _board[row][col];
-
-          return Stack(
-            children: [
-              // The square background
-              SvgPicture.asset(
-                isWhite ? Assets.icons.squareWhite : Assets.icons.squareBlack,
-                fit: BoxFit.cover,
-              ),
-
-              // The chess piece (if there is one)
-              if (piece != null)
-                Padding(
-                  padding: const EdgeInsets.all(4.0),
-                  child: SvgPicture.asset(
-                    _getPieceAssetPath(piece),
-                    fit: BoxFit.contain,
-                  ),
+        return Column(
+          children: [
+            // Game status info
+            _buildGameStatus(context, state),
+            SizedBox(height: AppSpacing.rem300), // Chess board
+            AspectRatio(
+              aspectRatio: 1.0,
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.brown, width: 4),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-            ],
-          );
-        },
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final squareSize = constraints.maxWidth / 8;
+
+                    return Stack(
+                      children: [
+                        // Chess board grid
+                        GridView.builder(
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 8,
+                          ),
+                          itemCount: 64,
+                          itemBuilder: (context, index) {
+                            final row = index ~/ 8;
+                            final col = index % 8;
+
+                            // Hide piece if it's currently being animated
+                            ChessPiece? piece = state.board.isNotEmpty
+                                ? state.board[row][col]
+                                : null;
+                            if (state.animatingMove != null &&
+                                state.animatingMove!.fromPosition.row == row &&
+                                state.animatingMove!.fromPosition.col == col) {
+                              piece =
+                                  null; // Hide the piece at source position during animation
+                            }
+
+                            final isSelected =
+                                state.selectedPosition?.row == row &&
+                                    state.selectedPosition?.col == col;
+                            final isHovered = _hoveredPosition?.row == row &&
+                                _hoveredPosition?.col == col;
+                            final isPossibleMove =
+                                state.possibleMoves.isNotEmpty &&
+                                    state.possibleMoves[row][col];
+                            final isDraggedPiece =
+                                _draggedPiecePosition?.row == row &&
+                                    _draggedPiecePosition?.col == col;
+
+                            return ChessSquare(
+                              row: row,
+                              col: col,
+                              piece: piece,
+                              isSelected: isSelected,
+                              isHovered: isHovered,
+                              isPossibleMove: isPossibleMove,
+                              isDraggedPiece: isDraggedPiece,
+                              onTap: _onSquareTapped,
+                              onPieceDropped: _onPieceDropped,
+                              onHoverEnter: _onHoverEnter,
+                              onHoverExit: _onHoverExit,
+                              onDragStarted: _onDragStarted,
+                              onDragEnd: _onDragEnd,
+                            );
+                          },
+                        ),
+
+                        // Animated piece overlay
+                        if (state.animatingMove != null)
+                          AnimatedPiece(
+                            piece: state.animatingMove!.piece,
+                            fromPosition: state.animatingMove!.fromPosition,
+                            toPosition: state.animatingMove!.toPosition,
+                            squareSize: squareSize,
+                            onAnimationComplete: () {
+                              context.read<GameRoomBloc>().add(
+                                    AnimationCompletedEvent(
+                                      from: state.animatingMove!.fromPosition,
+                                      to: state.animatingMove!.toPosition,
+                                    ),
+                                  );
+                            },
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildStartGamePrompt(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'Ready to start a new chess game?',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: AppSpacing.rem200),
+          BlocBuilder<GameRoomBloc, GameRoomState>(
+            builder: (context, state) {
+              if (state.gameConfig != null) {
+                return CommonButton(
+                  text: 'Start Game',
+                  onPressed: () {
+                    context
+                        .read<GameRoomBloc>()
+                        .add(StartNewGameEvent(gameConfig: state.gameConfig!));
+                  },
+                );
+              } else {
+                return const Text(
+                  'Loading game configuration...',
+                  style: TextStyle(fontSize: 16),
+                );
+              }
+            },
+          ),
+        ],
       ),
     );
+  }
+
+  Widget _buildGameStatus(BuildContext context, GameRoomState state) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Turn: ${state.isWhitesTurn ? "White" : "Black"}',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          if (state.gameEnded && state.winner != null)
+            Text(
+              'Winner: ${state.winner!.toUpperCase()}',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+          if (state.aiColor != null)
+            Row(
+              children: [
+                const Icon(Icons.computer, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  'AI: ${state.aiColor == PieceColor.white ? "White" : "Black"}',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _onSquareTapped(int row, int col) {
+    final position = Position(col, row);
+    final bloc = context.read<GameRoomBloc>();
+    final state = bloc.state;
+
+    if (state.selectedPosition == null) {
+      // No piece selected, try to select this piece
+      if (state.board.isNotEmpty &&
+          row < state.board.length &&
+          col < state.board[row].length &&
+          state.board[row][col] != null) {
+        bloc.add(SelectPieceEvent(position: position));
+      }
+    } else {
+      // A piece is already selected
+      if (state.selectedPosition!.row == row &&
+          state.selectedPosition!.col == col) {
+        // Tapped on the same piece, deselect
+        bloc.add(DeselectPieceEvent());
+      } else if (state.possibleMoves.isNotEmpty &&
+          row < state.possibleMoves.length &&
+          col < state.possibleMoves[row].length &&
+          state.possibleMoves[row][col]) {
+        // Valid move, execute it
+        bloc.add(MovePieceEvent(
+          from: state.selectedPosition!,
+          to: position,
+        ));
+      } else if (state.board.isNotEmpty &&
+          row < state.board.length &&
+          col < state.board[row].length &&
+          state.board[row][col] != null) {
+        // Tapped on another piece, select it
+        bloc.add(SelectPieceEvent(position: position));
+      } else {
+        // Tapped on empty square (invalid move), deselect
+        bloc.add(DeselectPieceEvent());
+      }
+    }
+  }
+
+  void _onPieceDropped(Position from, Position to) {
+    final bloc = context.read<GameRoomBloc>();
+    final state = bloc.state;
+
+    if (state.possibleMoves.isNotEmpty &&
+        to.row < state.possibleMoves.length &&
+        to.col < state.possibleMoves[to.row].length &&
+        state.possibleMoves[to.row][to.col]) {
+      bloc.add(MovePieceEvent(from: from, to: to));
+    }
+
+    setState(() {
+      _draggedPiecePosition = null;
+    });
+  }
+
+  void _onHoverEnter(Position position) {
+    setState(() {
+      _hoveredPosition = position;
+    });
+  }
+
+  void _onHoverExit() {
+    setState(() {
+      _hoveredPosition = null;
+    });
+  }
+
+  void _onDragStarted(ChessPiece piece) {
+    final bloc = context.read<GameRoomBloc>();
+
+    setState(() {
+      _draggedPiecePosition = piece.position;
+    });
+
+    // Select the piece being dragged
+    bloc.add(SelectPieceEvent(position: piece.position));
+  }
+
+  void _onDragEnd(bool wasAccepted) {
+    if (!wasAccepted) {
+      // If drag was not accepted, deselect the piece
+      context.read<GameRoomBloc>().add(DeselectPieceEvent());
+    }
+
+    setState(() {
+      _draggedPiecePosition = null;
+    });
   }
 }

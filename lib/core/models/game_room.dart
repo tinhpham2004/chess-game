@@ -5,8 +5,9 @@ import 'package:chess_game/core/models/chess_piece.dart';
 import 'package:chess_game/core/models/position.dart';
 import 'package:chess_game/core/patterns/builder/game_config_builder.dart';
 import 'package:chess_game/core/patterns/chain_of_responsibility/move_validator.dart';
-import 'package:chess_game/core/patterns/command/command.dart';
-import 'package:chess_game/core/patterns/memento/board_memento.dart';
+import 'package:chess_game/presentation/game_room/command/command_invoker.dart';
+import 'package:chess_game/presentation/game_room/command/move_command.dart';
+import 'package:chess_game/presentation/game_room/memento/board_memento.dart';
 import 'package:chess_game/core/patterns/observer/board_observer.dart';
 import 'package:chess_game/core/patterns/state/game_state.dart';
 import 'package:chess_game/core/patterns/strategy/ai_strategy.dart';
@@ -38,7 +39,9 @@ class GameRoom {
 
     // Setup AI if needed
     if (_config.isWhitePlayerAI || _config.isBlackPlayerAI) {
-      final strategy = _config.aiDifficultyLevel > 5 ? MinimaxAIStrategy(_config.aiDifficultyLevel - 5) : RandomAIStrategy();
+      final strategy = _config.aiDifficultyLevel > 5
+          ? MinimaxAIStrategy(_config.aiDifficultyLevel - 5)
+          : RandomAIStrategy();
 
       _aiPlayer = ChessAIPlayer(strategy);
     }
@@ -73,7 +76,7 @@ class GameRoom {
     }
 
     // Create and execute the move command
-    final command = MoveCommand(piece, to);
+    final command = MoveCommand(piece: piece, newPosition: to);
     _commandInvoker.executeCommand(command);
 
     // Switch turns
@@ -89,7 +92,8 @@ class GameRoom {
   void _makeAIMoveIfNeeded() {
     if (_aiPlayer == null) return;
 
-    final isAITurn = (_whitesTurn && _config.isWhitePlayerAI) || (!_whitesTurn && _config.isBlackPlayerAI);
+    final isAITurn = (_whitesTurn && _config.isWhitePlayerAI) ||
+        (!_whitesTurn && _config.isBlackPlayerAI);
 
     if (isAITurn) {
       final aiColor = _whitesTurn ? PieceColor.white : PieceColor.black;
@@ -111,17 +115,39 @@ class GameRoom {
 
   /// Undo the last move
   bool undo() {
-    if (!_stateContext.canUndo() || !_commandInvoker.canUndo()) return false;
+    if (!_stateContext.canUndo() || !_commandInvoker.canUndo) return false;
 
     _commandInvoker.undo();
     _whitesTurn = !_whitesTurn;
 
     // If undoing from an AI move, undo the human move as well
     if (_aiPlayer != null) {
-      final isUndoingAIMove = (_whitesTurn && _config.isBlackPlayerAI) || (!_whitesTurn && _config.isWhitePlayerAI);
+      final isUndoingAIMove = (_whitesTurn && _config.isBlackPlayerAI) ||
+          (!_whitesTurn && _config.isWhitePlayerAI);
 
-      if (isUndoingAIMove && _commandInvoker.canUndo()) {
+      if (isUndoingAIMove && _commandInvoker.canUndo) {
         _commandInvoker.undo();
+        _whitesTurn = !_whitesTurn;
+      }
+    }
+
+    return true;
+  }
+
+  /// Redo the last undone move
+  bool redo() {
+    if (!_commandInvoker.canRedo) return false;
+
+    _commandInvoker.redo();
+    _whitesTurn = !_whitesTurn;
+
+    // If redoing to an AI move, redo the AI's move as well
+    if (_aiPlayer != null) {
+      final isRedoingToAIMove = (_whitesTurn && _config.isBlackPlayerAI) ||
+          (!_whitesTurn && _config.isWhitePlayerAI);
+
+      if (isRedoingToAIMove && _commandInvoker.canRedo) {
+        _commandInvoker.redo();
         _whitesTurn = !_whitesTurn;
       }
     }
@@ -163,7 +189,8 @@ class GameRoom {
 
   /// Create a GameRoom from JSON
   factory GameRoom.fromJson(String json) {
-    final data = jsonDecode(json) as Map<String, dynamic>; // Create a GameConfig first
+    final data =
+        jsonDecode(json) as Map<String, dynamic>; // Create a GameConfig first
     final configBuilder = ChessGameConfigBuilder();
     // Set config values from JSON
 

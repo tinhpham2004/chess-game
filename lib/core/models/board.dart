@@ -1,6 +1,6 @@
 import 'package:chess_game/core/models/chess_piece.dart';
 import 'package:chess_game/core/models/position.dart';
-import 'package:chess_game/core/patterns/memento/board_memento.dart';
+import 'package:chess_game/presentation/game_room/memento/board_memento.dart';
 import 'package:chess_game/core/patterns/observer/board_observer.dart';
 
 class Board {
