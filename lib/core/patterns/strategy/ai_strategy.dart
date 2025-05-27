@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:chess_game/core/models/chess_piece.dart';
-import 'package:chess_game/core/patterns/command/command.dart';
+import 'package:chess_game/presentation/game_room/command/command.dart';
+import 'package:chess_game/presentation/game_room/command/move_command.dart';
 
 // Context for the AI strategy
 class ChessAIPlayer {
@@ -51,7 +52,7 @@ class RandomAIStrategy implements AIStrategy {
     final targetPosition = possibleMoves[_random.nextInt(possibleMoves.length)];
 
     // Create and return a move command
-    return MoveCommand(selectedPiece, targetPosition);
+    return MoveCommand(piece: selectedPiece, newPosition: targetPosition);
   }
 }
 
@@ -74,7 +75,7 @@ class MinimaxAIStrategy implements AIStrategy {
     for (var piece in aiPieces) {
       final moves = piece.getPossibleMoves(pieces);
       if (moves.isNotEmpty) {
-        return MoveCommand(piece, moves.first);
+        return MoveCommand(piece: piece, newPosition: moves.first);
       }
     }
 

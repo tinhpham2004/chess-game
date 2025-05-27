@@ -10,12 +10,15 @@ class BaseRouter {
 
   static String get currentLocation {
     final lastMatch = router.routerDelegate.currentConfiguration.last;
-    final matchList = lastMatch is ImperativeRouteMatch ? lastMatch.matches : router.routerDelegate.currentConfiguration;
+    final matchList = lastMatch is ImperativeRouteMatch
+        ? lastMatch.matches
+        : router.routerDelegate.currentConfiguration;
     return matchList.uri.toString();
   }
 
   GoRouter get baseRouter {
     router = GoRouter(
+      debugLogDiagnostics: true,
       initialLocation: _getInitialLocation(),
       navigatorKey: rootNavigatorKey,
       routes: [...AppRouter.routes],
@@ -24,5 +27,5 @@ class BaseRouter {
     return router;
   }
 
-  String? _getInitialLocation() => AppRouter.welcomeScreen;
+  String? _getInitialLocation() => AppRouter.playScreen;
 }

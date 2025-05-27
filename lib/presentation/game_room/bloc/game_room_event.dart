@@ -33,3 +33,34 @@ class SaveMatchHistoryEvent extends GameRoomEvent {
     required this.winner,
   });
 }
+
+// Chess Game Events
+class StartNewGameEvent extends GameRoomEvent {
+  final GameConfig gameConfig;
+  StartNewGameEvent({required this.gameConfig});
+}
+
+class SelectPieceEvent extends GameRoomEvent {
+  final Position position;
+  SelectPieceEvent({required this.position});
+}
+
+class MovePieceEvent extends GameRoomEvent {
+  final Position from;
+  final Position to;
+  MovePieceEvent({required this.from, required this.to});
+}
+
+class AnimationCompletedEvent extends GameRoomEvent {
+  final Position from;
+  final Position to;
+  AnimationCompletedEvent({required this.from, required this.to});
+}
+
+class UndoMoveEvent extends GameRoomEvent {}
+
+class RestartGameEvent extends GameRoomEvent {}
+
+class MakeAIMoveEvent extends GameRoomEvent {}
+
+class DeselectPieceEvent extends GameRoomEvent {}

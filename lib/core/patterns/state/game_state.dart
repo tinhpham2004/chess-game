@@ -40,7 +40,7 @@ abstract class GameState {
 
 // Concrete state - Waiting (before game starts)
 class WaitingState extends GameState {
-  WaitingState(GameStateContext context) : super(context);
+  WaitingState(super.context);
 
   @override
   bool canMove() => false;
@@ -63,7 +63,7 @@ class WaitingState extends GameState {
 
 // Concrete state - Playing
 class PlayingState extends GameState {
-  PlayingState(GameStateContext context) : super(context);
+  PlayingState(super.context);
 
   @override
   bool canMove() => true;
@@ -87,7 +87,7 @@ class PlayingState extends GameState {
 
 // Concrete state - Paused
 class PausedState extends GameState {
-  PausedState(GameStateContext context) : super(context);
+  PausedState(super.context);
 
   @override
   bool canMove() => false;
@@ -110,7 +110,7 @@ class PausedState extends GameState {
 
 // Concrete state - Finished (checkmate or stalemate)
 class FinishedState extends GameState {
-  FinishedState(GameStateContext context) : super(context);
+  FinishedState(super.context);
 
   @override
   bool canMove() => false;

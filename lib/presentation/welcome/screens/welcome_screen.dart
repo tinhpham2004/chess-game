@@ -1,5 +1,4 @@
 import 'package:chess_game/core/common/button/common_button.dart';
-import 'package:chess_game/core/common/scaffold/common_app_bar.dart';
 import 'package:chess_game/core/common/scaffold/common_scaffold.dart';
 import 'package:chess_game/core/common/text/common_text.dart';
 import 'package:chess_game/di/injection.dart';
@@ -14,7 +13,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 class WelcomeScreen extends StatelessWidget {
   WelcomeScreen({super.key});
   final _themeColor = getIt.get<AppTheme>().themeColor;
-
   void _onPlayWithAI() {
     AppRouter.push(AppRouter.difficultyScreen);
   }
@@ -23,20 +21,15 @@ class WelcomeScreen extends StatelessWidget {
     AppRouter.push(AppRouter.gameSetupScreen, params: {'isAIOpponent': false});
   }
 
-  void _onViewMatchHistory() {
-    AppRouter.push(AppRouter.matchHistoryScreen);
-  }
-
   @override
   Widget build(BuildContext context) {
     return CommonScaffold(
-      appBar: CommonAppBar(title: 'Chess Game'),
       backgroundColor: _themeColor.backgroundColor,
       body: Center(
         child: Padding(
           padding: EdgeInsets.all(AppSpacing.rem300),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               CommonText(
                 'Welcome to Chess Game',
@@ -58,11 +51,6 @@ class WelcomeScreen extends StatelessWidget {
                   CommonButton(
                     text: 'Play with Friend',
                     onPressed: _onPlayWithFriend,
-                    padding: EdgeInsets.symmetric(vertical: AppSpacing.rem200),
-                  ),
-                  CommonButton(
-                    text: 'View Match History',
-                    onPressed: _onViewMatchHistory,
                     padding: EdgeInsets.symmetric(vertical: AppSpacing.rem200),
                   ),
                 ],
