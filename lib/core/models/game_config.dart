@@ -1,6 +1,8 @@
 import 'dart:convert';
 
-class GameConfig {
+import 'package:chess_game/core/patterns/prototype/prototype.dart';
+
+class GameConfig implements Prototype {
   final int timeControlMinutes;
   final int incrementSeconds;
   final bool isWhitePlayerAI;
@@ -48,7 +50,7 @@ class GameConfig {
     );
   }
 
-  // Prototype pattern - create clone with possibly different settings
+  @override
   GameConfig clone({
     int? timeControlMinutes,
     int? incrementSeconds,
