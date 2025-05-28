@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class ChessBoardViewObserver extends StatefulWidget implements BoardObserver {
   final VoidCallback onUpdate;
 
-  ChessBoardViewObserver({Key? key, required this.onUpdate}) : super(key: key);
+  const ChessBoardViewObserver({super.key, required this.onUpdate});
 
   @override
   ChessBoardViewObserverState createState() => ChessBoardViewObserverState();
