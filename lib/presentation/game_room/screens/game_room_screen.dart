@@ -2,7 +2,7 @@ import 'package:chess_game/core/common/button/common_button.dart';
 import 'package:chess_game/core/common/scaffold/common_app_bar.dart';
 import 'package:chess_game/core/common/scaffold/common_scaffold.dart';
 import 'package:chess_game/core/common/text/common_text.dart';
-import 'package:chess_game/core/patterns/builder/game_config_builder.dart';
+import 'package:chess_game/core/models/game_config.dart';
 import 'package:chess_game/di/injection.dart';
 import 'package:chess_game/presentation/game_room/bloc/game_room_bloc.dart';
 import 'package:chess_game/presentation/game_room/widgets/chess_board.dart';

@@ -1,4 +1,3 @@
-import 'package:chess_game/core/patterns/builder/game_config_builder.dart';
 import 'package:chess_game/data/entities/game_room_entity.dart';
 import 'package:chess_game/data/entities/match_history_entity.dart';
 import 'package:chess_game/data/repository/game_room_repository.dart';
@@ -6,6 +5,7 @@ import 'package:chess_game/data/repository/match_history_repository.dart';
 import 'package:chess_game/core/models/chess_piece.dart';
 import 'package:chess_game/core/models/position.dart';
 import 'package:chess_game/core/models/game_room.dart';
+import 'package:chess_game/core/models/game_config.dart';
 import 'package:chess_game/presentation/game_room/command/game_room_command_manager.dart';
 import 'package:chess_game/presentation/game_room/memento/chess_board_manager.dart';
 import 'package:equatable/equatable.dart';

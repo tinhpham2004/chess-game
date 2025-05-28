@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:chess_game/core/models/board.dart';
 import 'package:chess_game/core/models/chess_piece.dart';
 import 'package:chess_game/core/models/position.dart';
+import 'package:chess_game/core/models/game_config.dart';
+
 import 'package:chess_game/core/patterns/builder/game_config_builder.dart';
 import 'package:chess_game/core/patterns/chain_of_responsibility/move_validator.dart';
 import 'package:chess_game/presentation/game_room/command/command_invoker.dart';
