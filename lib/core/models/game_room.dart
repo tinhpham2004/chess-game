@@ -5,8 +5,8 @@ import 'package:chess_game/core/models/chess_piece.dart';
 import 'package:chess_game/core/models/position.dart';
 import 'package:chess_game/core/models/game_config.dart';
 
-import 'package:chess_game/core/patterns/builder/game_config_builder.dart';
 import 'package:chess_game/core/patterns/chain_of_responsibility/move_validator.dart';
+import 'package:chess_game/presentation/setup/builder/implementation/game_config_builder.dart';
 import 'package:chess_game/presentation/game_room/command/command_invoker.dart';
 import 'package:chess_game/presentation/game_room/command/move_command.dart';
 import 'package:chess_game/presentation/game_room/memento/board_memento.dart';
@@ -193,7 +193,7 @@ class GameRoom {
   factory GameRoom.fromJson(String json) {
     final data =
         jsonDecode(json) as Map<String, dynamic>; // Create a GameConfig first
-    final configBuilder = ChessGameConfigBuilder();
+    final configBuilder = GameConfigBuilder();
     // Set config values from JSON
 
     // Then create the GameRoom
