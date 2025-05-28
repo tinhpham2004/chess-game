@@ -5,7 +5,7 @@ import 'package:chess_game/core/common/text/common_text.dart';
 import 'package:chess_game/data/entities/game_room_entity.dart';
 import 'package:chess_game/data/repository/game_room_repository.dart';
 import 'package:chess_game/di/injection.dart';
-import 'package:chess_game/core/patterns/builder/game_config_builder.dart';
+import 'package:chess_game/presentation/setup/builder/implementation/game_config_director.dart';
 import 'package:chess_game/router/app_router.dart';
 import 'package:chess_game/theme/app_theme.dart';
 import 'package:chess_game/theme/font/app_font_size.dart';
@@ -66,10 +66,14 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
         width: 120,
         padding: EdgeInsets.all(AppSpacing.rem200),
         decoration: BoxDecoration(
-          color: _playAsWhite == isWhite ? _themeColor.primaryColor.withOpacity(0.3) : _themeColor.backgroundColor.withOpacity(0.5),
+          color: _playAsWhite == isWhite
+              ? _themeColor.primaryColor.withOpacity(0.3)
+              : _themeColor.backgroundColor.withOpacity(0.5),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: _playAsWhite == isWhite ? _themeColor.primaryColor : _themeColor.borderColor,
+            color: _playAsWhite == isWhite
+                ? _themeColor.primaryColor
+                : _themeColor.borderColor,
             width: 2,
           ),
           boxShadow: _playAsWhite == isWhite
@@ -107,7 +111,9 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
             CommonText(
               label,
               style: TextStyle(
-                fontWeight: _playAsWhite == isWhite ? AppFontWeight.bold : AppFontWeight.regular,
+                fontWeight: _playAsWhite == isWhite
+                    ? AppFontWeight.bold
+                    : AppFontWeight.regular,
                 color: _themeColor.textPrimaryColor,
               ),
             ),
@@ -125,17 +131,20 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
       isWhiteAI: widget.isAIOpponent && !_playAsWhite,
       isBlackAI: widget.isAIOpponent && _playAsWhite,
       aiLevel: widget.aiDifficulty ?? 3,
-      boardTheme: 'classic',
-      pieceSet: 'standard',
+      // boardTheme: 'classic',
+      // pieceSet: 'standard',
       soundEnabled: true,
     );
 
     // Generate unique game id
-    final gameId = DateTime.now().millisecondsSinceEpoch.toString(); // Create game room model
+    final gameId = DateTime.now()
+        .millisecondsSinceEpoch
+        .toString(); // Create game room model
     final gameRoom = GameRoomEntity(
       id: gameId,
       json: jsonEncode({
-        'gameConfig': jsonDecode(gameConfig.toJson()), // Parse the JSON string to a Map
+        'gameConfig':
+            jsonDecode(gameConfig.toJson()), // Parse the JSON string to a Map
         'createdAt': DateTime.now().toIso8601String(),
       }),
     );
@@ -193,7 +202,8 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
                 color: _themeColor.surfaceColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: _themeColor.primaryColor.withOpacity(0.3)),
+                  side: BorderSide(
+                      color: _themeColor.primaryColor.withOpacity(0.3)),
                 ),
                 child: Padding(
                   padding: EdgeInsets.all(AppSpacing.rem200),
@@ -228,7 +238,8 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
                 color: _themeColor.surfaceColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: _themeColor.primaryColor.withOpacity(0.3)),
+                  side: BorderSide(
+                      color: _themeColor.primaryColor.withOpacity(0.3)),
                 ),
                 child: Padding(
                   padding: EdgeInsets.all(AppSpacing.rem200),
@@ -259,9 +270,11 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
                             child: SliderTheme(
                               data: SliderTheme.of(context).copyWith(
                                 activeTrackColor: _themeColor.primaryColor,
-                                inactiveTrackColor: _themeColor.primaryColor.withOpacity(0.3),
+                                inactiveTrackColor:
+                                    _themeColor.primaryColor.withOpacity(0.3),
                                 thumbColor: _themeColor.primaryColor,
-                                overlayColor: _themeColor.primaryColor.withOpacity(0.2),
+                                overlayColor:
+                                    _themeColor.primaryColor.withOpacity(0.2),
                                 valueIndicatorColor: _themeColor.primaryVariant,
                                 valueIndicatorTextStyle: TextStyle(
                                   color: _themeColor.onPrimaryColor,
@@ -313,9 +326,11 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
                             child: SliderTheme(
                               data: SliderTheme.of(context).copyWith(
                                 activeTrackColor: _themeColor.secondaryColor,
-                                inactiveTrackColor: _themeColor.secondaryColor.withOpacity(0.3),
+                                inactiveTrackColor:
+                                    _themeColor.secondaryColor.withOpacity(0.3),
                                 thumbColor: _themeColor.secondaryColor,
-                                overlayColor: _themeColor.secondaryColor.withOpacity(0.2),
+                                overlayColor:
+                                    _themeColor.secondaryColor.withOpacity(0.2),
                                 valueIndicatorColor: _themeColor.secondaryColor,
                                 valueIndicatorTextStyle: TextStyle(
                                   color: _themeColor.onSecondaryColor,
@@ -365,7 +380,8 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
                   color: _themeColor.surfaceColor,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: _themeColor.primaryColor.withOpacity(0.3)),
+                    side: BorderSide(
+                        color: _themeColor.primaryColor.withOpacity(0.3)),
                   ),
                   child: Padding(
                     padding: EdgeInsets.all(AppSpacing.rem200),

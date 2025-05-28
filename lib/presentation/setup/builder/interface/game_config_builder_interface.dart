@@ -4,10 +4,9 @@ import 'package:chess_game/core/models/game_config.dart';
 
 abstract class IGameConfigBuilder {
   IGameConfigBuilder reset();
-  IGameConfigBuilder setTimeControl(int minutes, int seconds);
-  IGameConfigBuilder setPlayerType(String playerType);
-  IGameConfigBuilder setBoardTheme(String boardTheme);
-  IGameConfigBuilder setPieceSet(String pieceSet);
+  IGameConfigBuilder setTimeControl(
+      int timeControlMinutes, int incrementSeconds);
+  IGameConfigBuilder setPlayerTypes(bool isWhiteAI, bool isBlackAI);
   IGameConfigBuilder setSoundEnabled(bool soundEnabled);
   IGameConfigBuilder setDifficultyLevel(int difficultyLevel);
   GameConfig build();

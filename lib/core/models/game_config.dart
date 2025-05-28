@@ -8,8 +8,8 @@ class GameConfig implements Prototype {
   final bool isWhitePlayerAI;
   final bool isBlackPlayerAI;
   final int aiDifficultyLevel; // 1-10
-  final String boardTheme;
-  final String pieceSet;
+  // final String boardTheme;
+  // final String pieceSet;
   final bool soundEnabled;
 
   GameConfig({
@@ -18,8 +18,8 @@ class GameConfig implements Prototype {
     required this.isWhitePlayerAI,
     required this.isBlackPlayerAI,
     required this.aiDifficultyLevel,
-    required this.boardTheme,
-    required this.pieceSet,
+    // required this.boardTheme,
+    // required this.pieceSet,
     required this.soundEnabled,
   });
 
@@ -30,8 +30,8 @@ class GameConfig implements Prototype {
         'isWhitePlayerAI': isWhitePlayerAI,
         'isBlackPlayerAI': isBlackPlayerAI,
         'aiDifficultyLevel': aiDifficultyLevel,
-        'boardTheme': boardTheme,
-        'pieceSet': pieceSet,
+        // 'boardTheme': boardTheme,
+        // 'pieceSet': pieceSet,
         'soundEnabled': soundEnabled,
       });
 
@@ -44,8 +44,8 @@ class GameConfig implements Prototype {
       isWhitePlayerAI: map['isWhitePlayerAI'],
       isBlackPlayerAI: map['isBlackPlayerAI'],
       aiDifficultyLevel: map['aiDifficultyLevel'],
-      boardTheme: map['boardTheme'],
-      pieceSet: map['pieceSet'],
+      // boardTheme: map['boardTheme'],
+      // pieceSet: map['pieceSet'],
       soundEnabled: map['soundEnabled'],
     );
   }
@@ -57,8 +57,8 @@ class GameConfig implements Prototype {
     bool? isWhitePlayerAI,
     bool? isBlackPlayerAI,
     int? aiDifficultyLevel,
-    String? boardTheme,
-    String? pieceSet,
+    // String? boardTheme,
+    // String? pieceSet,
     bool? soundEnabled,
   }) {
     return GameConfig(
@@ -67,8 +67,8 @@ class GameConfig implements Prototype {
       isWhitePlayerAI: isWhitePlayerAI ?? this.isWhitePlayerAI,
       isBlackPlayerAI: isBlackPlayerAI ?? this.isBlackPlayerAI,
       aiDifficultyLevel: aiDifficultyLevel ?? this.aiDifficultyLevel,
-      boardTheme: boardTheme ?? this.boardTheme,
-      pieceSet: pieceSet ?? this.pieceSet,
+      // boardTheme: boardTheme ?? this.boardTheme,
+      // pieceSet: pieceSet ?? this.pieceSet,
       soundEnabled: soundEnabled ?? this.soundEnabled,
     );
   }
