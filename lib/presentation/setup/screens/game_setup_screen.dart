@@ -5,7 +5,8 @@ import 'package:chess_game/core/common/text/common_text.dart';
 import 'package:chess_game/data/entities/game_room_entity.dart';
 import 'package:chess_game/data/repository/game_room_repository.dart';
 import 'package:chess_game/di/injection.dart';
-import 'package:chess_game/presentation/setup/builder/implementation/game_config_director.dart';
+import 'package:chess_game/presentation/setup/builder/interface/game_config_builder_interface.dart';
+import 'package:chess_game/presentation/setup/builder/interface/game_config_director_interface.dart';
 import 'package:chess_game/router/app_router.dart';
 import 'package:chess_game/theme/app_theme.dart';
 import 'package:chess_game/theme/font/app_font_size.dart';
@@ -29,11 +30,14 @@ class GameSetupScreen extends StatefulWidget {
 }
 
 class _GameSetupScreenState extends State<GameSetupScreen> {
+  // Game configuration settings
+  final _gameConfigBuilder = getIt.get<IGameConfigBuilder>();
+  final _configDirector = getIt.get<IGameConfigDirector>();
+
   final _gameRoomRepository = getIt.get<GameRoomRepository>();
-  final _configDirector = getIt.get<GameConfigDirector>();
   final _themeColor = getIt.get<AppTheme>().themeColor;
 
-  // Game configuration settings
+  // UI state variables
   bool _playAsWhite = true;
   int _timeControlMinutes = 10;
   int _incrementSeconds = 5;
@@ -60,6 +64,7 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
       onTap: () {
         setState(() {
           _playAsWhite = isWhite;
+          _gameConfigBuilder.setPlayerTypes(!isWhite, isWhite);
         });
       },
       child: Container(
@@ -125,17 +130,7 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
 
   Future<void> _createGameAndNavigate() async {
     // Create game configuration
-    final gameConfig = _configDirector.createCustomConfig(
-      minutes: _timeControlMinutes,
-      increment: _incrementSeconds,
-      isWhiteAI: widget.isAIOpponent && !_playAsWhite,
-      isBlackAI: widget.isAIOpponent && _playAsWhite,
-      aiLevel: widget.aiDifficulty ?? 3,
-      // boardTheme: 'classic',
-      // pieceSet: 'standard',
-      soundEnabled: true,
-    );
-
+    final gameConfig = _configDirector.buildGameConfig();
     // Generate unique game id
     final gameId = DateTime.now()
         .millisecondsSinceEpoch
@@ -156,6 +151,13 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
     if (mounted) {
       AppRouter.push(AppRouter.gameRoomScreen, params: gameId);
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _gameConfigBuilder.reset();
+    _gameConfigBuilder.setDifficultyLevel(widget.aiDifficulty ?? 3);
   }
 
   @override
@@ -289,6 +291,8 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
                                 onChanged: (value) {
                                   setState(() {
                                     _timeControlMinutes = value.round();
+                                    _gameConfigBuilder.setTimeControl(
+                                        _timeControlMinutes, _incrementSeconds);
                                   });
                                 },
                               ),
@@ -345,6 +349,8 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
                                 onChanged: (value) {
                                   setState(() {
                                     _incrementSeconds = value.round();
+                                    _gameConfigBuilder.setTimeControl(
+                                        _timeControlMinutes, _incrementSeconds);
                                   });
                                 },
                               ),
