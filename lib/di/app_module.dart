@@ -14,7 +14,7 @@ abstract class AppModule {
       GameConfigDirector(builder);
 
   @injectable
-  GameConfigBuilder provideGameConfigBuilder() => GameConfigBuilder();
+  IGameConfigBuilder provideGameConfigBuilder() => GameConfigBuilder();
 
   @lazySingleton
   AppColorFactory provideColorFactory() {

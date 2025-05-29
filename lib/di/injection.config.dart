@@ -11,7 +11,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 // import 'package:chess_game/core/patterns/builder/game_config_builder.dart'
 //     as _i855;
-import 'package:chess_game/presentation/setup/builder/implementation/game_config_director.dart'
+import 'package:chess_game/presentation/setup/builder/interface/game_config_director_interface.dart'
     as _i855;
 import 'package:chess_game/presentation/setup/builder/interface/game_config_builder_interface.dart'
     as _i856;
@@ -52,7 +52,7 @@ extension GetItInjectableX on _i174.GetIt {
         () => appModule.provideColorFactory());
     gh.lazySingleton<_i779.Database>(
         () => appModule.provideDatabase(gh<_i862.DBProvider>()));
-    gh.factory<_i855.GameConfigDirector>(() =>
+    gh.factory<_i855.IGameConfigDirector>(() =>
         appModule.provideGameConfigDirector(gh<_i856.IGameConfigBuilder>()));
     gh.factory<_i1034.GameRoomDao>(
         () => _i1034.GameRoomDao(gh<_i779.Database>()));
