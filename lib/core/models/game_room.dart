@@ -6,11 +6,11 @@ import 'package:chess_game/core/models/position.dart';
 import 'package:chess_game/core/models/game_config.dart';
 
 import 'package:chess_game/core/patterns/chain_of_responsibility/move_validator.dart';
+import 'package:chess_game/presentation/game_room/observer/interface/board_subscriber_interface.dart';
 import 'package:chess_game/presentation/setup/builder/implementation/game_config_builder.dart';
 import 'package:chess_game/presentation/game_room/command/command_invoker.dart';
 import 'package:chess_game/presentation/game_room/command/move_command.dart';
 import 'package:chess_game/presentation/game_room/memento/board_memento.dart';
-import 'package:chess_game/core/patterns/observer/board_observer.dart';
 import 'package:chess_game/core/patterns/state/game_state.dart';
 import 'package:chess_game/core/patterns/strategy/ai_strategy.dart';
 
@@ -20,7 +20,8 @@ class GameRoom {
   final Board _board = Board();
   final GameStateContext _stateContext = GameStateContext();
   final CommandInvoker _commandInvoker = CommandInvoker();
-  final MoveValidator _moveValidator = MoveValidatorChain.createChain();
+  // final MoveValidator _moveValidator = MoveValidatorChain.createChain();
+  final MoveValidator _moveValidator = MoveValidatorChain.createBasicChain();
   final GameConfig _config;
   BoardMemento? _initialState;
   bool _whitesTurn = true;
@@ -53,13 +54,13 @@ class GameRoom {
   }
 
   /// Add an observer to be notified of board changes
-  void addObserver(BoardObserver observer) {
-    _board.addObserver(observer);
+  void addObserver(IBoardSubscriber observer) {
+    _board.subscribe(observer);
   }
 
   /// Remove an observer
-  void removeObserver(BoardObserver observer) {
-    _board.removeObserver(observer);
+  void removeObserver(IBoardSubscriber observer) {
+    _board.unsubscribe(observer);
   }
 
   /// Attempt to move a piece
