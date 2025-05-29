@@ -1,5 +1,8 @@
-import 'package:chess_game/core/patterns/builder/game_config_builder.dart';
 import 'package:chess_game/data/datasource/db_provider.dart';
+import 'package:chess_game/presentation/setup/builder/implementation/game_config_builder.dart';
+import 'package:chess_game/presentation/setup/builder/implementation/game_config_director.dart';
+import 'package:chess_game/presentation/setup/builder/interface/game_config_builder_interface.dart';
+import 'package:chess_game/presentation/setup/builder/interface/game_config_director_interface.dart';
 import 'package:chess_game/theme/color/app_color_factory.dart';
 import 'package:flutter/material.dart';
 import 'package:injectable/injectable.dart';
@@ -8,15 +11,19 @@ import 'package:sqflite/sqflite.dart';
 @module
 abstract class AppModule {
   @injectable
-  GameConfigDirector provideGameConfigDirector(GameConfigBuilder builder) => GameConfigDirector(builder);
+  IGameConfigDirector provideGameConfigDirector(IGameConfigBuilder builder) =>
+      GameConfigDirector(builder);
 
   @injectable
-  GameConfigBuilder provideGameConfigBuilder() => ChessGameConfigBuilder();
+  IGameConfigBuilder provideGameConfigBuilder() => GameConfigBuilder();
 
   @lazySingleton
   AppColorFactory provideColorFactory() {
-    final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
-    return brightness == Brightness.dark ? AppDarkColorFactory() : AppLightColorFactory();
+    final brightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    return brightness == Brightness.dark
+        ? AppDarkColorFactory()
+        : AppLightColorFactory();
   }
 
   @preResolve

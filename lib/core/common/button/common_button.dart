@@ -32,9 +32,11 @@ class CommonButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final buttonColor = isEnable ? themeColor.primaryColor : themeColor.borderColor;
+    final buttonColor =
+        isEnable ? themeColor.primaryColor : themeColor.borderColor;
 
-    final borderColor = isEnable ? themeColor.borderColor : themeColor.borderColor;
+    final borderColor =
+        isEnable ? themeColor.borderColor : themeColor.borderColor;
 
     final borderWidth = isEnable ? AppBorderWH.s : AppBorderWH.xs;
 
@@ -61,7 +63,9 @@ class CommonButton extends StatelessWidget {
             child: CommonText(
               text ?? '',
               style: TextStyle(
-                color: isEnable ? themeColor.textPrimaryColor : themeColor.secondaryColor,
+                color: isEnable
+                    ? themeColor.textPrimaryColor
+                    : themeColor.secondaryColor,
                 fontWeight: AppFontWeight.semiBold,
                 fontSize: AppFontSize.md,
               ),

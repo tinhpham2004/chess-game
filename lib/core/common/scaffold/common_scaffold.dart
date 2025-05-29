@@ -9,6 +9,7 @@ class CommonScaffold extends StatelessWidget {
   final List<Widget>? actions;
   final Widget? drawer;
   final PreferredSizeWidget? appBar;
+  final Widget? bottomNavigationBar;
   final bool resizeToAvoidBottomInset;
   final Color? backgroundColor;
   final bool isLoading;
@@ -21,6 +22,7 @@ class CommonScaffold extends StatelessWidget {
     this.actions,
     this.drawer,
     this.appBar,
+    this.bottomNavigationBar,
     this.resizeToAvoidBottomInset = true,
     this.backgroundColor,
     this.isLoading = false,
@@ -34,6 +36,7 @@ class CommonScaffold extends StatelessWidget {
       children: [
         Scaffold(
           appBar: appBar,
+          bottomNavigationBar: bottomNavigationBar,
           body: body,
           floatingActionButton: floatingActionButton,
           drawer: drawer,

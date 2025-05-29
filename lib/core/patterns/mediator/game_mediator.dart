@@ -1,6 +1,7 @@
 import 'package:chess_game/core/models/position.dart';
-import 'package:chess_game/core/patterns/command/command.dart';
-import 'package:chess_game/core/patterns/memento/board_memento.dart';
+import 'package:chess_game/presentation/game_room/command/command.dart';
+import 'package:chess_game/presentation/game_room/command/command_invoker.dart';
+import 'package:chess_game/presentation/game_room/memento/board_memento.dart';
 
 /// Mediator interface
 abstract class GameMediator {
@@ -49,7 +50,7 @@ class ChessGameMediator implements GameMediator {
   @override
   void notifyBoardChanged() {
     _moveHistory.updateFromBoard(_chessBoard);
-    _controlPanel.updateButtons(_commandInvoker.canUndo(), _chessBoard.isGameOver());
+    _controlPanel.updateButtons(_commandInvoker.canUndo, _chessBoard.isGameOver());
   }
 
   @override
@@ -69,7 +70,7 @@ class ChessGameMediator implements GameMediator {
 
   @override
   void performUndoMove() {
-    if (_commandInvoker.canUndo()) {
+    if (_commandInvoker.canUndo) {
       _commandInvoker.undo();
       _chessBoard.updateUI();
       _moveHistory.removeLastMove();

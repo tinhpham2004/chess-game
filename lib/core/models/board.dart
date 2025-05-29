@@ -1,26 +1,30 @@
 import 'package:chess_game/core/models/chess_piece.dart';
 import 'package:chess_game/core/models/position.dart';
-import 'package:chess_game/core/patterns/memento/board_memento.dart';
-import 'package:chess_game/core/patterns/observer/board_observer.dart';
+import 'package:chess_game/presentation/game_room/memento/board_memento.dart';
+import 'package:chess_game/presentation/game_room/observer/interface/board_publisher_interface.dart';
+import 'package:chess_game/presentation/game_room/observer/interface/board_subscriber_interface.dart';
 
-class Board {
+class Board implements IBoardPublisher {
   final List<List<ChessPiece?>> _board = List.generate(
     8,
     (_) => List.generate(8, (_) => null),
   );
 
-  final List<BoardObserver> _observers = [];
+  final List<IBoardSubscriber> _observers = [];
 
   // Observer pattern methods
-  void addObserver(BoardObserver observer) {
+  @override
+  void subscribe(IBoardSubscriber observer) {
     _observers.add(observer);
   }
 
-  void removeObserver(BoardObserver observer) {
+  @override
+  void unsubscribe(IBoardSubscriber observer) {
     _observers.remove(observer);
   }
 
-  void notifyObservers() {
+  @override
+  void notifySubscribers() {
     for (final observer in _observers) {
       observer.update();
     }
@@ -41,12 +45,15 @@ class Board {
     _board[to.row][to.col] = piece;
     _board[from.row][from.col] = null;
 
-    notifyObservers();
+    notifySubscribers();
     return true;
   }
 
   bool _isValidPosition(Position position) {
-    return position.row >= 0 && position.row < 8 && position.col >= 0 && position.col < 8;
+    return position.row >= 0 &&
+        position.row < 8 &&
+        position.col >= 0 &&
+        position.col < 8;
   }
 
   // Memento pattern methods
@@ -56,7 +63,7 @@ class Board {
 
   void restoreFromMemento(BoardMemento memento) {
     _restoreBoard(memento.getState());
-    notifyObservers();
+    notifySubscribers();
   }
 
   List<List<ChessPiece?>> _deepCopyBoard() {

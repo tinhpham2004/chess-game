@@ -28,6 +28,9 @@ class $AssetsIconsGen {
   /// File path: assets/icons/knight_white.svg
   String get knightWhite => 'assets/icons/knight_white.svg';
 
+  /// File path: assets/icons/move_dot.svg
+  String get moveDot => 'assets/icons/move_dot.svg';
+
   /// File path: assets/icons/pawn_black.svg
   String get pawnBlack => 'assets/icons/pawn_black.svg';
 
@@ -60,6 +63,7 @@ class $AssetsIconsGen {
     kingWhite,
     knightBlack,
     knightWhite,
+    moveDot,
     pawnBlack,
     pawnWhite,
     queenBlack,

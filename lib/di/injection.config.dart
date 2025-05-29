@@ -9,8 +9,12 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'package:chess_game/core/patterns/builder/game_config_builder.dart'
+// import 'package:chess_game/core/patterns/builder/game_config_builder.dart'
+//     as _i855;
+import 'package:chess_game/presentation/setup/builder/interface/game_config_director_interface.dart'
     as _i855;
+import 'package:chess_game/presentation/setup/builder/interface/game_config_builder_interface.dart'
+    as _i856;
 import 'package:chess_game/data/datasource/db_provider.dart' as _i862;
 import 'package:chess_game/data/datasource/game_room_dao.dart' as _i1034;
 import 'package:chess_game/data/datasource/match_history_dao.dart' as _i169;
@@ -38,7 +42,7 @@ extension GetItInjectableX on _i174.GetIt {
       environmentFilter,
     );
     final appModule = _$AppModule();
-    gh.factory<_i855.GameConfigBuilder>(
+    gh.factory<_i856.IGameConfigBuilder>(
         () => appModule.provideGameConfigBuilder());
     await gh.factoryAsync<_i862.DBProvider>(
       () => appModule.provideDbProvider(),
@@ -48,8 +52,8 @@ extension GetItInjectableX on _i174.GetIt {
         () => appModule.provideColorFactory());
     gh.lazySingleton<_i779.Database>(
         () => appModule.provideDatabase(gh<_i862.DBProvider>()));
-    gh.factory<_i855.GameConfigDirector>(() =>
-        appModule.provideGameConfigDirector(gh<_i855.GameConfigBuilder>()));
+    gh.factory<_i855.IGameConfigDirector>(() =>
+        appModule.provideGameConfigDirector(gh<_i856.IGameConfigBuilder>()));
     gh.factory<_i1034.GameRoomDao>(
         () => _i1034.GameRoomDao(gh<_i779.Database>()));
     gh.factory<_i169.MatchHistoryDao>(

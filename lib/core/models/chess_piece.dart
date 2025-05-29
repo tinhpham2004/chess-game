@@ -5,8 +5,8 @@ enum PieceType { pawn, rook, knight, bishop, queen, king }
 enum PieceColor { white, black }
 
 abstract class ChessPiece {
-  final PieceType type;
   final PieceColor color;
+  PieceType type;
   Position position;
 
   ChessPiece({
@@ -28,13 +28,9 @@ class Pawn extends ChessPiece {
   bool hasMoved = false;
 
   Pawn({
-    required PieceColor color,
-    required Position position,
-  }) : super(
-          type: PieceType.pawn,
-          color: color,
-          position: position,
-        );
+    required super.color,
+    required super.position,
+  }) : super(type: PieceType.pawn);
 
   @override
   ChessPiece clone() {
@@ -61,13 +57,9 @@ class Rook extends ChessPiece {
   bool hasMoved = false; // For castling
 
   Rook({
-    required PieceColor color,
-    required Position position,
-  }) : super(
-          type: PieceType.rook,
-          color: color,
-          position: position,
-        );
+    required super.color,
+    required super.position,
+  }) : super(type: PieceType.rook);
 
   @override
   ChessPiece clone() {
@@ -91,13 +83,9 @@ class Rook extends ChessPiece {
 
 class Knight extends ChessPiece {
   Knight({
-    required PieceColor color,
-    required Position position,
-  }) : super(
-          type: PieceType.knight,
-          color: color,
-          position: position,
-        );
+    required super.color,
+    required super.position,
+  }) : super(type: PieceType.knight);
 
   @override
   ChessPiece clone() {
@@ -119,13 +107,9 @@ class Knight extends ChessPiece {
 
 class Bishop extends ChessPiece {
   Bishop({
-    required PieceColor color,
-    required Position position,
-  }) : super(
-          type: PieceType.bishop,
-          color: color,
-          position: position,
-        );
+    required super.color,
+    required super.position,
+  }) : super(type: PieceType.bishop);
 
   @override
   ChessPiece clone() {
@@ -147,13 +131,9 @@ class Bishop extends ChessPiece {
 
 class Queen extends ChessPiece {
   Queen({
-    required PieceColor color,
-    required Position position,
-  }) : super(
-          type: PieceType.queen,
-          color: color,
-          position: position,
-        );
+    required super.color,
+    required super.position,
+  }) : super(type: PieceType.queen);
 
   @override
   ChessPiece clone() {
@@ -177,13 +157,9 @@ class King extends ChessPiece {
   bool hasMoved = false; // For castling
 
   King({
-    required PieceColor color,
-    required Position position,
-  }) : super(
-          type: PieceType.king,
-          color: color,
-          position: position,
-        );
+    required super.color,
+    required super.position,
+  }) : super(type: PieceType.king);
 
   @override
   ChessPiece clone() {

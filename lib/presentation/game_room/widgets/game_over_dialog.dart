@@ -33,7 +33,8 @@ class GameOverDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final resultMessage = result == 'Draw' ? 'Game ended in a draw!' : '$result wins!';
+    final resultMessage =
+        result == 'Draw' ? 'Game ended in a draw!' : '$result wins!';
 
     return AlertDialog(
       backgroundColor: _themeColor.backgroundColor,
@@ -94,7 +95,7 @@ class GameOverDialog extends StatelessWidget {
           onPressed: () {
             // Go to match history screen
             Navigator.of(context).pop();
-            AppRouter.go(AppRouter.matchHistoryScreen);
+            AppRouter.go(AppRouter.historyScreen);
           },
           child: CommonText(
             'View History',
@@ -105,7 +106,7 @@ class GameOverDialog extends StatelessWidget {
           onPressed: () {
             // Go back to welcome screen
             Navigator.of(context).pop();
-            AppRouter.go(AppRouter.welcomeScreen);
+            AppRouter.go(AppRouter.playScreen);
           },
           child: CommonText(
             'Main Menu',

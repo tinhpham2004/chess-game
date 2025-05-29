@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:chess_game/core/patterns/builder/game_config_builder.dart';
+import 'package:chess_game/core/models/game_config.dart';
 import 'package:chess_game/data/datasource/game_room_dao.dart';
 import 'package:chess_game/data/entities/game_room_entity.dart';
 import 'package:injectable/injectable.dart';
