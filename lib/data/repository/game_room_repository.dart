@@ -5,11 +5,21 @@ import 'package:chess_game/data/datasource/game_room_dao.dart';
 import 'package:chess_game/data/entities/game_room_entity.dart';
 import 'package:injectable/injectable.dart';
 
-@injectable
+@singleton 
 class GameRoomRepository {
+  static GameRoomRepository? _instance;
   final GameRoomDao _dao;
 
-  GameRoomRepository(this._dao);
+  // Private constructor
+  GameRoomRepository._(this._dao);
+
+  // Factory constructor 
+  factory GameRoomRepository(GameRoomDao dao) {
+    _instance ??= GameRoomRepository._(dao);
+    return _instance!;
+  }
+
+  static GameRoomRepository? get instance => _instance;
 
   Future<void> saveGameRoom(GameRoomEntity gameRoom) async {
     await _dao.insertGameRoom(gameRoom);
