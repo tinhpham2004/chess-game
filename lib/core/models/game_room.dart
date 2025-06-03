@@ -21,7 +21,7 @@ class GameRoom {
   final GameStateContext _stateContext = GameStateContext();
   final CommandInvoker _commandInvoker = CommandInvoker();
   // final MoveValidator _moveValidator = MoveValidatorChain.createChain();
-  final MoveValidator _moveValidator = MoveValidatorChain.createBasicChain();
+  final MoveValidator _moveValidator = MoveValidatorChain.createCompleteChain();
   final GameConfig _config;
   BoardMemento? _initialState;
   bool _whitesTurn = true;
