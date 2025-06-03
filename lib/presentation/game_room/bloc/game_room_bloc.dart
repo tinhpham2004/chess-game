@@ -8,6 +8,12 @@ import 'package:chess_game/core/models/game_room.dart';
 import 'package:chess_game/core/models/game_config.dart';
 import 'package:chess_game/presentation/game_room/command/game_room_command_manager.dart';
 import 'package:chess_game/presentation/game_room/memento/chess_board_manager.dart';
+import 'package:chess_game/presentation/game_room/mediator/chess_game_mediator.dart';
+import 'package:chess_game/presentation/game_room/mediator/components/chess_board_component.dart';
+import 'package:chess_game/presentation/game_room/mediator/components/move_history_component.dart';
+import 'package:chess_game/presentation/game_room/mediator/components/control_panel_component.dart';
+import 'package:chess_game/presentation/game_room/mediator/components/chat_panel_component.dart';
+import 'package:chess_game/presentation/game_room/mediator/ui_mediator.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
@@ -23,17 +29,28 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
   final ChessBoardManager _boardManager = ChessBoardManager();
   GameRoom? _currentGameRoom;
 
+  // Mediator
+  late final ChessGameMediator _gameMediator;
+
+  // Getter để UI có thể access mediator
+  ChessGameMediator get gameMediator => _gameMediator;
+
   GameRoomBloc(this._gameRoomRepository, this._matchHistoryRepository)
       : super(const GameRoomState()) {
     // Connect command manager with board manager
     _commandManager.setBoardManager(_boardManager);
 
+    // Initialize mediator
+    _initializeMediator();
+
+    // Register event handlers
     on<GameRoomInitialized>(_onInitialized);
     on<LoadGameRoomEvent>(_onLoadGameRoom);
     on<SaveGameRoomEvent>(_onSaveGameRoom);
     on<DeleteGameRoomEvent>(_onDeleteGameRoom);
     on<LoadGameConfigEvent>(_onLoadGameConfig);
     on<SaveMatchHistoryEvent>(_onSaveMatchHistory);
+
     // Chess game events
     on<StartNewGameEvent>(_onStartNewGame);
     on<SelectPieceEvent>(_onSelectPiece);
@@ -43,6 +60,28 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     on<MakeAIMoveEvent>(_onMakeAIMove);
     on<DeselectPieceEvent>(_onDeselectPiece);
     on<AnimationCompletedEvent>(_onAnimationCompleted);
+  }
+
+  /// Initialize mediator with all components
+  void _initializeMediator() {
+    try {
+      final chessBoardComponent = ChessBoardComponent();
+      final moveHistoryComponent = MoveHistoryComponent();
+      final controlPanelComponent = ControlPanelComponent();
+      final chatPanelComponent = ChatPanelComponent();
+
+      _gameMediator = ChessGameMediator(
+        chessBoard: chessBoardComponent,
+        moveHistory: moveHistoryComponent,
+        controlPanel: controlPanelComponent,
+        chatPanel: chatPanelComponent,
+      );
+
+      print('🎯 GameRoomBloc: Mediator initialized successfully');
+    } catch (e) {
+      print('🎯 GameRoomBloc: Failed to initialize mediator: $e');
+      rethrow;
+    }
   }
 
   void _onInitialized(GameRoomInitialized event, Emitter<GameRoomState> emit) {
@@ -186,12 +225,16 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
         errorMessage: null,
       ));
 
+      // Notify mediator about game start
+      _gameMediator.notifyGameStarted();
+
       // If white is AI, make the first move
       if (aiColor == PieceColor.white) {
         add(MakeAIMoveEvent());
       }
     } catch (e) {
       emit(state.copyWith(errorMessage: e.toString()));
+      _gameMediator.broadcastSystemMessage("❌ Failed to start game: $e");
     }
   }
 
@@ -207,6 +250,9 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
 
     // Don't allow player to move AI pieces
     if (state.aiColor != null && piece.color == state.aiColor) return;
+
+    // Notify mediator about square tap
+    _gameMediator.chessBoard.onSquareTapped(event.position);
 
     // Calculate possible moves
     final possibleMoves = _getPossibleMoves(piece);
@@ -225,6 +271,9 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
 
     // Check if move is valid
     if (!_isValidMove(event.from, event.to)) return;
+
+    // Notify mediator about piece drop
+    _gameMediator.chessBoard.onPieceDropped(event.from, event.to);
 
     // First, check if this is a special move (castling or promotion)
     if (handleSpecialMove(event.from, event.to, emit)) {
@@ -252,66 +301,80 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     final piece = _getPieceAt(event.from);
     if (piece == null) return;
 
-    // Check if there's a piece to capture
-    final capturedPiece = _getPieceAt(event
-        .to); // Execute the actual move after animation completes using command pattern
-    _commandManager.executeMove(
-      piece: piece,
-      to: event.to,
-      capturedPiece: capturedPiece,
-    );
+    try {
+      // Check if there's a piece to capture
+      final capturedPiece = _getPieceAt(event.to);
 
-    // Execute the actual move after animation completes
-    final newBoard = _executeMove(event.from, event.to);
+      // Execute the actual move after animation completes using command pattern
+      _commandManager.executeMove(
+        piece: piece,
+        to: event.to,
+        capturedPiece: capturedPiece,
+      );
 
-    // Switch turn in board manager to keep it synchronized with UI state
-    _boardManager.switchTurn();
+      // Execute the actual move after animation completes
+      final newBoard = _executeMove(event.from, event.to);
 
-    // Save the board state after the turn is switched
-    _boardManager.saveCurrentState();
-    final newMoveHistory = [
-      ...state.moveHistory,
-      '${event.from.toString()}-${event.to.toString()}'
-    ];
+      // Switch turn in board manager to keep it synchronized with UI state
+      _boardManager.switchTurn();
 
-    // Check for game end conditions
-    final isGameOver = _checkGameEnd(newBoard, !state.isWhitesTurn);
-    String? winner;
-    if (isGameOver) {
-      winner = _determineWinner(newBoard, !state.isWhitesTurn);
-    }
+      // Save the board state after the turn is switched
+      _boardManager.saveCurrentState();
+      final newMoveHistory = [
+        ...state.moveHistory,
+        '${event.from.toString()}-${event.to.toString()}'
+      ];
 
-    emit(state.copyWith(
-      board: newBoard,
-      isWhitesTurn: !state.isWhitesTurn,
-      possibleMoves: _createEmptyMovesMatrix(),
-      clearSelectedPosition: true,
-      moveHistory: newMoveHistory,
-      gameEnded: isGameOver,
-      winner: winner,
-      clearAnimatingMove: true,
-    ));
-
-    // If game ended, save match history
-    if (isGameOver && winner != null) {
-      add(SaveMatchHistoryEvent(
-        gameId: _currentGameRoom?.id ?? '',
-        winner: winner,
-      ));
-    } else if (!isGameOver) {
-      // Check if it's AI's turn to move
-      final nextPlayerColor =
-          state.isWhitesTurn ? PieceColor.black : PieceColor.white;
-      if (state.aiColor == nextPlayerColor) {
-        add(MakeAIMoveEvent());
+      // Check for game end conditions
+      final isGameOver = _checkGameEnd(newBoard, !state.isWhitesTurn);
+      String? winner;
+      if (isGameOver) {
+        winner = _determineWinner(newBoard, !state.isWhitesTurn);
       }
+
+      // Notify mediator about move
+      final move = '${event.from.toString()}-${event.to.toString()}';
+      _gameMediator.notifyMoveRecorded(move,
+          player: state.isWhitesTurn ? "White" : "Black");
+
+      emit(state.copyWith(
+        board: newBoard,
+        isWhitesTurn: !state.isWhitesTurn,
+        possibleMoves: _createEmptyMovesMatrix(),
+        clearSelectedPosition: true,
+        moveHistory: newMoveHistory,
+        gameEnded: isGameOver,
+        winner: winner,
+        clearAnimatingMove: true,
+      ));
+
+      // Handle game end
+      if (isGameOver && winner != null) {
+        _gameMediator.notifyGameOver(winner);
+        add(SaveMatchHistoryEvent(
+          gameId: _currentGameRoom?.id ?? '',
+          winner: winner,
+        ));
+      } else if (!isGameOver) {
+        // Check if it's AI's turn to move
+        final nextPlayerColor =
+            state.isWhitesTurn ? PieceColor.black : PieceColor.white;
+        if (state.aiColor == nextPlayerColor) {
+          add(MakeAIMoveEvent());
+        }
+      }
+    } catch (e) {
+      emit(state.copyWith(errorMessage: 'Move failed: ${e.toString()}'));
+      _gameMediator.broadcastSystemMessage("❌ Move failed: $e");
     }
   }
 
   void _onUndoMove(UndoMoveEvent event, Emitter<GameRoomState> emit) {
-    // Use memento pattern to undo to previous board state
     if (_boardManager.canUndo) {
       try {
+        // Notify mediator first
+        _gameMediator.controlPanel.onUndoPressed();
+
         // Undo using memento (board manager handles the state restoration)
         final success = _boardManager.undo();
 
@@ -326,132 +389,153 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
             winner: null,
             clearAnimatingMove: true,
           ));
+
+          // Notify mediator about board change
+          _gameMediator.notifyBoardChanged();
         }
       } catch (e) {
         emit(state.copyWith(errorMessage: 'Undo failed: ${e.toString()}'));
+        _gameMediator.broadcastSystemMessage("❌ Undo failed: $e");
       }
     }
   }
 
   void _onRestartGame(RestartGameEvent event, Emitter<GameRoomState> emit) {
     if (state.gameConfig != null) {
+      // Notify mediator before restart
+      _gameMediator.controlPanel.restartGame();
+
+      // Start new game with current config
       add(StartNewGameEvent(gameConfig: state.gameConfig!));
     }
   }
 
+  // lib/presentation/game_room/bloc/game_room_bloc.dart
+
+// Thêm 2 methods bị thiếu sau method _onRestartGame:
+
+  void _onDeselectPiece(DeselectPieceEvent event, Emitter<GameRoomState> emit) {
+    // Clear selected position and possible moves
+    emit(state.copyWith(
+      clearSelectedPosition: true,
+      possibleMoves: _createEmptyMovesMatrix(),
+    ));
+
+    // Notify mediator about deselection
+    _gameMediator.chessBoard.onSquareSelected(
+        Position(-1, -1)); // Invalid position to indicate deselection
+
+    print('🎯 GameRoomBloc: Piece deselected');
+  }
+
   void _onMakeAIMove(MakeAIMoveEvent event, Emitter<GameRoomState> emit) {
     if (state.gameEnded || !state.gameStarted) return;
-    if (state.aiColor == null) return;
 
+    // Check if it's actually AI's turn
     final currentPlayerColor =
         state.isWhitesTurn ? PieceColor.white : PieceColor.black;
     if (state.aiColor != currentPlayerColor) return;
 
     try {
-      // Use GameRoom's AI to get the best move
-      if (_currentGameRoom != null) {
-        // Get AI move from GameRoom (this would normally use the AI strategy)
-        // For now, we'll simulate an AI move by finding a valid piece and move
-        final aiMove = _findValidAIMove(currentPlayerColor);
+      // Notify mediator about AI move attempt
+      _gameMediator.broadcastSystemMessage("🤖 AI is thinking...");
 
-        if (aiMove != null) {
-          final from = aiMove['from'] as Position;
-          final to = aiMove['to'] as Position;
-          final piece = _getPieceAt(from);
+      // Simple AI: Find a random valid move
+      final aiMove = _generateAIMove();
 
-          if (piece != null) {
-            final capturedPiece = _getPieceAt(to); // Execute AI move command
-            _commandManager.executeAIMove(
-              piece: piece,
-              from: from,
-              to: to,
-              capturedPiece: capturedPiece,
-            );
+      if (aiMove != null) {
+        // Notify mediator about AI move
+        _gameMediator.broadcastSystemMessage(
+            "🤖 AI makes move: ${aiMove['from']}-${aiMove['to']}");
 
-            // Check if this is a special move first
-            if (handleSpecialMove(from, to, emit)) {
-              return; // Special move was handled
-            }
-
-            // Execute regular move
-            final newBoard = _executeMove(from, to);
-
-            // Switch turn in board manager to keep it synchronized with UI state
-            _boardManager.switchTurn();
-
-            // Save the board state after the turn is switched
-            _boardManager.saveCurrentState();
-            final newMoveHistory = [
-              ...state.moveHistory,
-              'AI: ${from.toString()}-${to.toString()}'
-            ];
-
-            // Check for game end conditions
-            final isGameOver = _checkGameEnd(newBoard, !state.isWhitesTurn);
-            String? winner;
-            if (isGameOver) {
-              winner = _determineWinner(newBoard, !state.isWhitesTurn);
-            }
-
-            emit(state.copyWith(
-              board: newBoard,
-              isWhitesTurn: !state.isWhitesTurn,
-              possibleMoves: _createEmptyMovesMatrix(),
-              clearSelectedPosition: true,
-              moveHistory: newMoveHistory,
-              gameEnded: isGameOver,
-              winner: winner,
-            ));
-
-            // If game ended, save match history
-            if (isGameOver && winner != null) {
-              add(SaveMatchHistoryEvent(
-                gameId: _currentGameRoom?.id ?? '',
-                winner: winner,
-              ));
-            }
-          }
-        }
+        // Execute AI move
+        add(MovePieceEvent(
+          from: aiMove['from'] as Position,
+          to: aiMove['to'] as Position,
+        ));
+      } else {
+        // No valid moves found - AI passes or game might be over
+        _gameMediator
+            .broadcastSystemMessage("🤖 AI has no valid moves available");
+        print('🎯 GameRoomBloc: AI has no valid moves');
       }
     } catch (e) {
       emit(state.copyWith(errorMessage: 'AI move failed: ${e.toString()}'));
+      _gameMediator.broadcastSystemMessage("❌ AI move failed: $e");
     }
   }
 
-  /// Find a valid move for AI (simplified implementation)
-  Map<String, Position>? _findValidAIMove(PieceColor aiColor) {
-    // Find all pieces of the AI color using board manager
+// Helper method để generate AI move
+  Map<String, Position>? _generateAIMove() {
     final board = _boardManager.board;
+    final aiColor = state.aiColor;
+
+    if (aiColor == null) return null;
+
+    // Find all AI pieces
+    final aiPieces = <Map<String, dynamic>>[];
+
     for (int row = 0; row < 8; row++) {
       for (int col = 0; col < 8; col++) {
         final piece = board[row][col];
         if (piece != null && piece.color == aiColor) {
-          // Get possible moves for this piece
-          final possibleMoves = _getPossibleMoves(piece);
+          aiPieces.add({
+            'piece': piece,
+            'position': Position(col, row),
+          });
+        }
+      }
+    }
 
-          // Find the first valid move
-          for (int toRow = 0; toRow < 8; toRow++) {
-            for (int toCol = 0; toCol < 8; toCol++) {
-              if (possibleMoves[toRow][toCol]) {
-                return {
-                  'from': Position(col, row),
-                  'to': Position(toCol, toRow),
-                };
-              }
+    // Try to find a valid move for any AI piece
+    for (final pieceData in aiPieces) {
+      final piece = pieceData['piece'] as ChessPiece;
+      final position = pieceData['position'] as Position;
+      final possibleMoves = _getPossibleMoves(piece);
+
+      // Find first valid move
+      for (int row = 0; row < 8; row++) {
+        for (int col = 0; col < 8; col++) {
+          if (possibleMoves[row][col]) {
+            final targetPosition = Position(col, row);
+
+            // Validate the move is actually legal
+            if (_isValidMove(position, targetPosition)) {
+              return {
+                'from': position,
+                'to': targetPosition,
+              };
             }
           }
         }
       }
     }
-    return null;
+
+    return null; // No valid moves found
   }
 
-  void _onDeselectPiece(DeselectPieceEvent event, Emitter<GameRoomState> emit) {
-    emit(state.copyWith(
-      clearSelectedPosition: true,
-      possibleMoves: _createEmptyMovesMatrix(),
-    ));
+  /// Get the new rook position after castling
+  Position _getNewRookPositionForCastle(Position kingFrom, Position kingTo) {
+    final isKingsideCastle = kingTo.col > kingFrom.col;
+    final newRookCol = isKingsideCastle ? 5 : 3;
+    return Position(newRookCol, kingFrom.row); // Fixed: col first, then row
   }
+
+  /// Get the rook piece for castling
+  ChessPiece? _getRookForCastle(Position kingFrom, Position kingTo) {
+    final isKingsideCastle = kingTo.col > kingFrom.col;
+    final rookCol = isKingsideCastle ? 7 : 0;
+    return _getPieceAt(
+        Position(rookCol, kingFrom.row)); // Fixed: col first, then row
+  }
+
+  /// Get the rook's original position for castling
+  Position _getRookPositionForCastle(Position kingFrom, Position kingTo) {
+    final isKingsideCastle = kingTo.col > kingFrom.col;
+    final rookCol = isKingsideCastle ? 7 : 0;
+    return Position(rookCol, kingFrom.row); // Fixed: col first, then row
+  }
+
   // Command pattern helper methods
 
   /// Execute a castle move using command pattern
@@ -562,27 +646,6 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     }
 
     return false;
-  }
-
-  /// Get the rook piece for castling
-  ChessPiece? _getRookForCastle(Position kingFrom, Position kingTo) {
-    final isKingsideCastle = kingTo.col > kingFrom.col;
-    final rookCol = isKingsideCastle ? 7 : 0;
-    return _getPieceAt(Position(kingFrom.row, rookCol));
-  }
-
-  /// Get the rook's original position for castling
-  Position _getRookPositionForCastle(Position kingFrom, Position kingTo) {
-    final isKingsideCastle = kingTo.col > kingFrom.col;
-    final rookCol = isKingsideCastle ? 7 : 0;
-    return Position(kingFrom.row, rookCol);
-  }
-
-  /// Get the new rook position after castling
-  Position _getNewRookPositionForCastle(Position kingFrom, Position kingTo) {
-    final isKingsideCastle = kingTo.col > kingFrom.col;
-    final newRookCol = isKingsideCastle ? 5 : 3;
-    return Position(kingFrom.row, newRookCol);
   }
 
   /// Execute castle move on the board
@@ -709,5 +772,65 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     if (!whiteKingExists) return 'black';
     if (!blackKingExists) return 'white';
     return 'draw';
+  }
+
+  // Test methods để debug mediator
+  void testMediatorFlow() {
+    print('\n🎯 === TESTING MEDIATOR FLOW IN GAMEROOM BLOC ===');
+
+    // Test 1: Component initialization
+    print('🎯 Step 1: Testing component initialization');
+    print('✅ ChessBoard Component: ${_gameMediator.chessBoard != null}');
+    print('✅ MoveHistory Component: ${_gameMediator.moveHistory != null}');
+    print('✅ ControlPanel Component: ${_gameMediator.controlPanel != null}');
+    print('✅ ChatPanel Component: ${_gameMediator.chatPanel != null}');
+
+    // Test 2: Mediator registration
+    print('\n🎯 Step 2: Testing mediator registration');
+    print(
+        '✅ ChessBoard has mediator: ${_gameMediator.chessBoard.mediator != null}');
+    print(
+        '✅ MoveHistory has mediator: ${_gameMediator.moveHistory.mediator != null}');
+    print(
+        '✅ ControlPanel has mediator: ${_gameMediator.controlPanel.mediator != null}');
+    print(
+        '✅ ChatPanel has mediator: ${_gameMediator.chatPanel.mediator != null}');
+
+    // Test 3: Event flow
+    print('\n🎯 Step 3: Testing event communication');
+    _testMediatorEvents();
+  }
+
+  void _testMediatorEvents() {
+    print('🎯 Testing BLoC → Mediator → Components flow:');
+
+    print('\n🎯 1. Testing Game Start Notification:');
+    _gameMediator.notifyGameStarted();
+
+    print('\n🎯 2. Testing Move Recording:');
+    _gameMediator.notifyMoveRecorded('e2-e4', player: 'TestPlayer');
+
+    print('\n🎯 3. Testing Board Change:');
+    _gameMediator.notifyBoardChanged();
+
+    print('\n🎯 4. Testing Chat Message:');
+    _gameMediator.sendChatMessage('Test message from BLoC!', 'BLoC');
+
+    print('🎯 Mediator flow test completed!');
+  }
+
+  /// Get mediator status for debugging
+  Map<String, dynamic> getMediatorStatus() {
+    return {
+      'mediator_initialized': _gameMediator != null,
+      'chess_board_component': _gameMediator.chessBoard != null,
+      'move_history_component': _gameMediator.moveHistory != null,
+      'control_panel_component': _gameMediator.controlPanel != null,
+      'chat_panel_component': _gameMediator.chatPanel != null,
+      'chat_messages_count': _gameMediator.chatPanel.messages.length,
+      'move_history_count': _gameMediator.moveHistory.moves.length,
+      'game_over': _gameMediator.chessBoard.isGameOver(),
+      'can_undo': _gameMediator.chessBoard.canUndo(),
+    };
   }
 }
