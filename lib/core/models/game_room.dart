@@ -27,6 +27,8 @@ class GameRoom {
   bool _whitesTurn = true;
   ChessAIPlayer? _aiPlayer;
 
+  MoveValidator get moveValidator => _moveValidator;
+
   GameRoom({
     required this.id,
     required GameConfig config,

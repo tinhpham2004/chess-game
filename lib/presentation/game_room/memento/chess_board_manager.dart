@@ -264,4 +264,17 @@ class ChessBoardManager {
     clearHistory();
     _saveCurrentState();
   }
+
+  /// Get all existing pieces on the current board
+  List<ChessPiece> getAllPieces() {
+    final pieces = <ChessPiece>[];
+    for (var row in _board) {
+      for (var piece in row) {
+        if (piece != null) {
+          pieces.add(piece);
+        }
+      }
+    }
+    return pieces;
+  }
 }

@@ -23,8 +23,7 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
   final ChessBoardManager _boardManager = ChessBoardManager();
   GameRoom? _currentGameRoom;
 
-  GameRoomBloc(this._gameRoomRepository, this._matchHistoryRepository)
-      : super(const GameRoomState()) {
+  GameRoomBloc(this._gameRoomRepository, this._matchHistoryRepository) : super(const GameRoomState()) {
     // Connect command manager with board manager
     _commandManager.setBoardManager(_boardManager);
 
@@ -49,24 +48,21 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     emit(const GameRoomState());
   }
 
-  Future<void> _onLoadGameRoom(
-      LoadGameRoomEvent event, Emitter<GameRoomState> emit) async {
+  Future<void> _onLoadGameRoom(LoadGameRoomEvent event, Emitter<GameRoomState> emit) async {
     emit(state.copyWith(loading: true, errorMessage: null));
     try {
       final gameRoom = await _gameRoomRepository.fetchGameRoom(event.id);
       if (gameRoom != null) {
         emit(state.copyWith(gameRoom: gameRoom, loading: false));
       } else {
-        emit(state.copyWith(
-            loading: false, errorMessage: 'Game room not found'));
+        emit(state.copyWith(loading: false, errorMessage: 'Game room not found'));
       }
     } catch (e) {
       emit(state.copyWith(loading: false, errorMessage: e.toString()));
     }
   }
 
-  Future<void> _onSaveGameRoom(
-      SaveGameRoomEvent event, Emitter<GameRoomState> emit) async {
+  Future<void> _onSaveGameRoom(SaveGameRoomEvent event, Emitter<GameRoomState> emit) async {
     emit(state.copyWith(loading: true, errorMessage: null));
     try {
       await _gameRoomRepository.saveGameRoom(event.gameRoom);
@@ -76,8 +72,7 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     }
   }
 
-  Future<void> _onDeleteGameRoom(
-      DeleteGameRoomEvent event, Emitter<GameRoomState> emit) async {
+  Future<void> _onDeleteGameRoom(DeleteGameRoomEvent event, Emitter<GameRoomState> emit) async {
     emit(state.copyWith(loading: true, errorMessage: null));
     try {
       await _gameRoomRepository.deleteGameRoom(event.id);
@@ -87,8 +82,7 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     }
   }
 
-  Future<void> _onLoadGameConfig(
-      LoadGameConfigEvent event, Emitter<GameRoomState> emit) async {
+  Future<void> _onLoadGameConfig(LoadGameConfigEvent event, Emitter<GameRoomState> emit) async {
     emit(state.copyWith(loading: true, errorMessage: null));
     try {
       final gameRoom = await _gameRoomRepository.fetchGameRoom(event.gameId);
@@ -96,35 +90,25 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
         final gameConfig = await _gameRoomRepository.fetchGameConfig(gameRoom);
 
         if (gameConfig != null) {
-          emit(state.copyWith(
-              gameRoom: gameRoom, gameConfig: gameConfig, loading: false));
+          emit(state.copyWith(gameRoom: gameRoom, gameConfig: gameConfig, loading: false));
         } else {
-          emit(state.copyWith(
-              gameRoom: gameRoom,
-              loading: false,
-              errorMessage: 'Game config not found'));
+          emit(state.copyWith(gameRoom: gameRoom, loading: false, errorMessage: 'Game config not found'));
         }
       } else {
-        emit(state.copyWith(
-            loading: false, errorMessage: 'Game room not found'));
+        emit(state.copyWith(loading: false, errorMessage: 'Game room not found'));
       }
     } catch (e) {
       emit(state.copyWith(loading: false, errorMessage: e.toString()));
     }
   }
 
-  Future<void> _onSaveMatchHistory(
-      SaveMatchHistoryEvent event, Emitter<GameRoomState> emit) async {
-    emit(state.copyWith(
-        loading: true, errorMessage: null, winner: event.winner));
+  Future<void> _onSaveMatchHistory(SaveMatchHistoryEvent event, Emitter<GameRoomState> emit) async {
+    emit(state.copyWith(loading: true, errorMessage: null, winner: event.winner));
     try {
       if (state.gameConfig != null) {
-        final whitePlayer =
-            state.gameConfig!.isWhitePlayerAI ? 'Computer' : 'Player 1';
-        final blackPlayer =
-            state.gameConfig!.isBlackPlayerAI ? 'Computer' : 'Player 2';
-        final isAiOpponent = state.gameConfig!.isWhitePlayerAI ||
-            state.gameConfig!.isBlackPlayerAI;
+        final whitePlayer = state.gameConfig!.isWhitePlayerAI ? 'Computer' : 'Player 1';
+        final blackPlayer = state.gameConfig!.isBlackPlayerAI ? 'Computer' : 'Player 2';
+        final isAiOpponent = state.gameConfig!.isWhitePlayerAI || state.gameConfig!.isBlackPlayerAI;
 
         // Create a match history record
         final matchHistory = MatchHistoryEntity(
@@ -136,16 +120,14 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
           moveHistory: state.moveHistory.join(','), // Join moves with comma
           date: DateTime.now(),
           isAiOpponent: isAiOpponent,
-          aiDifficulty:
-              isAiOpponent ? state.gameConfig?.aiDifficultyLevel : null,
+          aiDifficulty: isAiOpponent ? state.gameConfig?.aiDifficultyLevel : null,
         );
 
         // Save to database
         await _matchHistoryRepository.saveMatchHistory(matchHistory);
         emit(state.copyWith(loading: false, gameEnded: true));
       } else {
-        emit(state.copyWith(
-            loading: false, errorMessage: 'Game config not found'));
+        emit(state.copyWith(loading: false, errorMessage: 'Game config not found'));
       }
     } catch (e) {
       emit(state.copyWith(loading: false, errorMessage: e.toString()));
@@ -153,8 +135,7 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
   }
 
   // Chess game event handlers
-  Future<void> _onStartNewGame(
-      StartNewGameEvent event, Emitter<GameRoomState> emit) async {
+  Future<void> _onStartNewGame(StartNewGameEvent event, Emitter<GameRoomState> emit) async {
     try {
       // Create a new game room instance
       _currentGameRoom = GameRoom(
@@ -224,7 +205,7 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     if (piece == null) return;
 
     // Check if move is valid
-    if (!_isValidMove(event.from, event.to)) return;
+    if (!_isValidMove(piece, event.from, event.to)) return;
 
     // First, check if this is a special move (castling or promotion)
     if (handleSpecialMove(event.from, event.to, emit)) {
@@ -245,16 +226,14 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     ));
   }
 
-  void _onAnimationCompleted(
-      AnimationCompletedEvent event, Emitter<GameRoomState> emit) {
+  void _onAnimationCompleted(AnimationCompletedEvent event, Emitter<GameRoomState> emit) {
     if (state.animatingMove == null) return;
 
     final piece = _getPieceAt(event.from);
     if (piece == null) return;
 
     // Check if there's a piece to capture
-    final capturedPiece = _getPieceAt(event
-        .to); // Execute the actual move after animation completes using command pattern
+    final capturedPiece = _getPieceAt(event.to); // Execute the actual move after animation completes using command pattern
     _commandManager.executeMove(
       piece: piece,
       to: event.to,
@@ -269,10 +248,7 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
 
     // Save the board state after the turn is switched
     _boardManager.saveCurrentState();
-    final newMoveHistory = [
-      ...state.moveHistory,
-      '${event.from.toString()}-${event.to.toString()}'
-    ];
+    final newMoveHistory = [...state.moveHistory, '${event.from.toString()}-${event.to.toString()}'];
 
     // Check for game end conditions
     final isGameOver = _checkGameEnd(newBoard, !state.isWhitesTurn);
@@ -300,8 +276,7 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
       ));
     } else if (!isGameOver) {
       // Check if it's AI's turn to move
-      final nextPlayerColor =
-          state.isWhitesTurn ? PieceColor.black : PieceColor.white;
+      final nextPlayerColor = state.isWhitesTurn ? PieceColor.black : PieceColor.white;
       if (state.aiColor == nextPlayerColor) {
         add(MakeAIMoveEvent());
       }
@@ -343,8 +318,7 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     if (state.gameEnded || !state.gameStarted) return;
     if (state.aiColor == null) return;
 
-    final currentPlayerColor =
-        state.isWhitesTurn ? PieceColor.white : PieceColor.black;
+    final currentPlayerColor = state.isWhitesTurn ? PieceColor.white : PieceColor.black;
     if (state.aiColor != currentPlayerColor) return;
 
     try {
@@ -381,10 +355,7 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
 
             // Save the board state after the turn is switched
             _boardManager.saveCurrentState();
-            final newMoveHistory = [
-              ...state.moveHistory,
-              'AI: ${from.toString()}-${to.toString()}'
-            ];
+            final newMoveHistory = [...state.moveHistory, 'AI: ${from.toString()}-${to.toString()}'];
 
             // Check for game end conditions
             final isGameOver = _checkGameEnd(newBoard, !state.isWhitesTurn);
@@ -497,13 +468,11 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     if (piece?.type != PieceType.pawn) return false;
 
     // Pawn reaches the opposite end
-    return (piece?.color == PieceColor.white && to.row == 0) ||
-        (piece?.color == PieceColor.black && to.row == 7);
+    return (piece?.color == PieceColor.white && to.row == 0) || (piece?.color == PieceColor.black && to.row == 7);
   }
 
   /// Handle special moves (castling, promotion) using command pattern
-  bool handleSpecialMove(
-      Position from, Position to, Emitter<GameRoomState> emit) {
+  bool handleSpecialMove(Position from, Position to, Emitter<GameRoomState> emit) {
     final piece = _getPieceAt(from);
     if (piece == null) return false;
 
@@ -518,8 +487,7 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
           newKingPosition: to,
           newRookPosition: newRookPosition,
         ); // Update the board state after castling
-        final newBoard = _executeCastleMoveOnBoard(
-            from, to, _getRookPositionForCastle(from, to), newRookPosition);
+        final newBoard = _executeCastleMoveOnBoard(from, to, _getRookPositionForCastle(from, to), newRookPosition);
 
         // Switch turn in board manager to keep it synchronized with UI state
         _boardManager.switchTurn();
@@ -586,16 +554,14 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
   }
 
   /// Execute castle move on the board
-  List<List<ChessPiece?>> _executeCastleMoveOnBoard(
-      Position kingFrom, Position kingTo, Position rookFrom, Position rookTo) {
+  List<List<ChessPiece?>> _executeCastleMoveOnBoard(Position kingFrom, Position kingTo, Position rookFrom, Position rookTo) {
     // The castle command will handle the actual piece movement through board manager
     // Just return the current board state from board manager
     return _boardManager.board;
   }
 
   /// Execute promotion on the board
-  List<List<ChessPiece?>> _executePromotionOnBoard(
-      Position from, Position to, ChessPiece promotedPiece) {
+  List<List<ChessPiece?>> _executePromotionOnBoard(Position from, Position to, ChessPiece promotedPiece) {
     // The promotion command will handle the actual piece movement through board manager
     // Just return the current board state from board manager
     return _boardManager.board;
@@ -603,10 +569,7 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
 
   /// Get command history for debugging or analysis
   List<String> getCommandHistory() {
-    return _commandManager
-        .getCommandHistory()
-        .map((command) => command.runtimeType.toString())
-        .toList();
+    return _commandManager.getCommandHistory().map((command) => command.runtimeType.toString()).toList();
   }
 
   /// Check if undo is available
@@ -621,10 +584,7 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
   }
 
   ChessPiece? _getPieceAt(Position position) {
-    if (position.row < 0 ||
-        position.row >= 8 ||
-        position.col < 0 ||
-        position.col >= 8) {
+    if (position.row < 0 || position.row >= 8 || position.col < 0 || position.col >= 8) {
       return null;
     }
     // Use board manager to get piece at position
@@ -656,9 +616,11 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     return moves;
   }
 
-  bool _isValidMove(Position from, Position to) {
-    if (to.row < 0 || to.row >= 8 || to.col < 0 || to.col >= 8) return false;
-    return state.possibleMoves[to.row][to.col];
+  bool _isValidMove(ChessPiece piece, Position from, Position to) {
+    // if (to.row < 0 || to.row >= 8 || to.col < 0 || to.col >= 8) return false;
+    // return state.possibleMoves[to.row][to.col];
+    final allPieces = _boardManager.getAllPieces();
+    return _currentGameRoom?.moveValidator.validate(piece, from, to, allPieces) ?? false;
   }
 
   List<List<ChessPiece?>> _executeMove(Position from, Position to) {
