@@ -11,7 +11,20 @@ class GameStateContext {
   }
 
   void changeState(GameState state) {
-    _state = state;
+    //Add validation for valid transitions
+    if (_isValidTransition(state)) {
+      _state = state;
+    } else {
+      throw Exception('Invalid state transition to ${state.runtimeType}');
+    }
+  }
+
+  bool _isValidTransition(GameState newState) {
+    if (_state is WaitingState && newState is! PlayingState) return false;
+    if (_state is PlayingState && newState is! PausedState && newState is! FinishedState) return false;
+    if (_state is PausedState && newState is! PlayingState) return false;
+    if (_state is FinishedState) return false; // No transitions from FinishedState
+    return true;
   }
 
   bool canMove() => _state.canMove();
@@ -79,8 +92,40 @@ class PlayingState extends GameState {
 
   @override
   bool movePiece(ChessPiece piece, Position destination) {
-    // Implementation for moving a piece while in playing state
-    // This would check if the move is valid and execute it
+    // Check if the destination is within bounds
+    if (destination.row < 0 || destination.row >= 8 || 
+        destination.col < 0 || destination.col >= 8) {
+      return false;
+    }
+
+    // Create a clone of the piece and its current position for validation
+    final pieceClone = piece.clone();
+    final startPosition = piece.position.clone();
+
+    // Use the piece's isValidMove method to check if the move is valid
+    // The empty list will be replaced with actual pieces in the game implementation
+    if (!pieceClone.isValidMove(startPosition, destination, [])) {
+      return false;
+    }
+
+    // Update the piece's position if the move is valid
+    piece.position = destination;
+
+    // The piece has moved - update its state if needed
+    switch (piece.type) {
+      case PieceType.pawn:
+        (piece as Pawn).hasMoved = true;
+        break;
+      case PieceType.king:
+        (piece as King).hasMoved = true;
+        break;
+      case PieceType.rook:
+        (piece as Rook).hasMoved = true;
+        break;
+      default:
+        break;
+    }
+
     return true;
   }
 }
