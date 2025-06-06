@@ -697,23 +697,20 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
 
   List<List<bool>> _getPossibleMoves(ChessPiece piece) {
     final moves = _createEmptyMovesMatrix();
-    final pos = piece.position;
-    final board = _boardManager.board;
 
-    // Simplified move calculation - show moves around the piece
-    for (int dRow = -2; dRow <= 2; dRow++) {
-      for (int dCol = -2; dCol <= 2; dCol++) {
-        if (dRow == 0 && dCol == 0) continue;
+    // Get all pieces from the board manager
+    final allPieces = _boardManager.getAllPieces();
 
-        int newRow = pos.row + dRow;
-        int newCol = pos.col + dCol;
+    // Use the piece's own getPossibleMoves method which implements correct chess rules
+    final possiblePositions = piece.getPossibleMoves(allPieces);
 
-        if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-          final targetPiece = board[newRow][newCol];
-          if (targetPiece == null || targetPiece.color != piece.color) {
-            moves[newRow][newCol] = true;
-          }
-        }
+    // Mark the possible moves in the matrix
+    for (final position in possiblePositions) {
+      if (position.row >= 0 &&
+          position.row < 8 &&
+          position.col >= 0 &&
+          position.col < 8) {
+        moves[position.row][position.col] = true;
       }
     }
 
