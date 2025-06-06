@@ -5,18 +5,17 @@ class GameConfigBuilder implements IGameConfigBuilder {
   int _timeControlMinutes = 10;
   int _incrementSeconds = 0;
   bool _isWhitePlayerAI = false;
-  bool _isBlackPlayerAI = true;
+  bool _isBlackPlayerAI = false;
   int _aiDifficultyLevel = 3;
   // String _boardTheme = 'classic';
   // String _pieceSet = 'standard';
   bool _soundEnabled = true;
-
   @override
   IGameConfigBuilder reset() {
     _timeControlMinutes = 10;
     _incrementSeconds = 0;
     _isWhitePlayerAI = false;
-    _isBlackPlayerAI = true;
+    _isBlackPlayerAI = false;
     _aiDifficultyLevel = 3;
     // _boardTheme = 'classic';
     // _pieceSet = 'standard';
