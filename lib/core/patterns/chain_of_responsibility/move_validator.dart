@@ -364,8 +364,6 @@ class PawnPromotionValidator extends MoveValidator {
       List<ChessPiece> allPieces) {
     if (piece.type != PieceType.pawn) return true;
 
-    final promotionRow = piece.color == PieceColor.white ? 0 : 7;
-
     // Allow move to promotion rank
     // In actual game, UI would handle promotion choice
     return true;

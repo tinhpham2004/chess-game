@@ -177,6 +177,17 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
                     : null,
               ),
               CommonButton(
+                text: 'Hint',
+                onPressed: state.gameStarted &&
+                        !state.gameEnded &&
+                        !state.showingHint
+                    ? () => context.read<GameRoomBloc>().add(RequestHintEvent())
+                    : state.showingHint
+                        ? () =>
+                            context.read<GameRoomBloc>().add(DismissHintEvent())
+                        : null,
+              ),
+              CommonButton(
                 text: 'Restart',
                 onPressed: state.gameStarted
                     ? () => context.read<GameRoomBloc>().add(RestartGameEvent())
