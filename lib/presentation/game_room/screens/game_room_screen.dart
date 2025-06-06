@@ -196,8 +196,20 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
   Widget _buildGameLayout(BuildContext context, GameRoomState state) {
     debugPrint('🎯 Building game layout with mediator: ${_gameRoomBloc.gameMediator != null}');
     
+    // Thêm debug info
+    if (_gameRoomBloc.gameMediator == null) {
+      debugPrint('🚨 ERROR: Mediator is null!');
+      return Center(child: Text('Mediator not initialized'));
+    }
+    
+    debugPrint('🎯 Mediator components: '
+      'moveHistory=${_gameRoomBloc.gameMediator.moveHistory != null}, '
+      'chatPanel=${_gameRoomBloc.gameMediator.chatPanel != null}');
+    
     return LayoutBuilder(
       builder: (context, constraints) {
+        debugPrint('🎯 Screen constraints: ${constraints.maxWidth}x${constraints.maxHeight}');
+        
         if (constraints.maxWidth > 800) {
           return _buildDesktopLayout(context, state);
         } else {
