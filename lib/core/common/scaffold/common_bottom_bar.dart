@@ -48,13 +48,13 @@ class _CommonBottomBarState extends State<CommonBottomBar> {
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: _themeColor.borderColor.withOpacity(0.3),
+            color: _themeColor.borderColor.withValues(alpha: 0.3),
             width: AppBorderWH.xs,
           ),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),

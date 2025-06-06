@@ -41,6 +41,11 @@ class GameRoomState extends Equatable {
   final PieceColor? aiColor;
   final List<String> moveHistory;
   final AnimationData? animatingMove;
+  // New hint functionality
+  final Position? hintFromPosition;
+  final Position? hintToPosition;
+  final bool showingHint;
+
   const GameRoomState({
     this.gameRoom,
     this.gameConfig,
@@ -56,7 +61,11 @@ class GameRoomState extends Equatable {
     this.aiColor,
     this.moveHistory = const [],
     this.animatingMove,
+    this.hintFromPosition,
+    this.hintToPosition,
+    this.showingHint = false,
   });
+
   GameRoomState copyWith({
     GameRoomEntity? gameRoom,
     GameConfig? gameConfig,
@@ -72,8 +81,12 @@ class GameRoomState extends Equatable {
     PieceColor? aiColor,
     List<String>? moveHistory,
     AnimationData? animatingMove,
+    Position? hintFromPosition,
+    Position? hintToPosition,
+    bool? showingHint,
     bool clearSelectedPosition = false,
     bool clearAnimatingMove = false,
+    bool clearHint = false,
   }) {
     return GameRoomState(
       gameRoom: gameRoom ?? this.gameRoom,
@@ -93,6 +106,11 @@ class GameRoomState extends Equatable {
       moveHistory: moveHistory ?? this.moveHistory,
       animatingMove:
           clearAnimatingMove ? null : (animatingMove ?? this.animatingMove),
+      hintFromPosition:
+          clearHint ? null : (hintFromPosition ?? this.hintFromPosition),
+      hintToPosition:
+          clearHint ? null : (hintToPosition ?? this.hintToPosition),
+      showingHint: clearHint ? false : (showingHint ?? this.showingHint),
     );
   }
 
@@ -112,5 +130,8 @@ class GameRoomState extends Equatable {
         aiColor,
         moveHistory,
         animatingMove,
+        hintFromPosition,
+        hintToPosition,
+        showingHint,
       ];
 }

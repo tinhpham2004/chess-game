@@ -50,7 +50,8 @@ class ChessGameMediator implements GameMediator {
   @override
   void notifyBoardChanged() {
     _moveHistory.updateFromBoard(_chessBoard);
-    _controlPanel.updateButtons(_commandInvoker.canUndo, _chessBoard.isGameOver());
+    _controlPanel.updateButtons(
+        _commandInvoker.canUndo, _chessBoard.isGameOver());
   }
 
   @override
@@ -64,7 +65,8 @@ class ChessGameMediator implements GameMediator {
 
     // Check for time-based game over conditions
     if (whiteTimeLeft <= 0 || blackTimeLeft <= 0) {
-      _chessBoard.setGameOver(whiteTimeLeft <= 0 ? "Black wins on time" : "White wins on time");
+      _chessBoard.setGameOver(
+          whiteTimeLeft <= 0 ? "Black wins on time" : "White wins on time");
     }
   }
 
@@ -143,6 +145,8 @@ class ChessBoardComponent implements GameComponent {
     _mediator.notifyBoardChanged();
   }
 
+  String get gameOverReason => _gameOverReason;
+
   void showHint() {
     // Logic to show a hint for the current player
   }
@@ -178,6 +182,9 @@ class MoveHistoryComponent implements GameComponent {
   void updateFromBoard(ChessBoardComponent board) {
     // The board has changed state, update move history if needed
   }
+
+  List<String> get moves => List.unmodifiable(_moves);
+  GameMediator get mediator => _mediator;
 }
 
 /// Concrete Component - ControlPanel
@@ -210,6 +217,10 @@ class ControlPanelComponent implements GameComponent {
     _gameOver = isGameOver;
     // Update the UI to reflect the new states
   }
+
+  bool get undoEnabled => _undoEnabled;
+  bool get gameOver => _gameOver;
+  GameMediator get mediator => _mediator;
 }
 
 /// Concrete Component - TimerPanel
@@ -242,4 +253,8 @@ class TimerPanelComponent implements GameComponent {
   void stopTimer() {
     // Stop the timer
   }
+
+  int get whiteTimeLeft => _whiteTimeLeft;
+  int get blackTimeLeft => _blackTimeLeft;
+  GameMediator get mediator => _mediator;
 }

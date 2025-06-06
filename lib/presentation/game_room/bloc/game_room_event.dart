@@ -64,3 +64,13 @@ class RestartGameEvent extends GameRoomEvent {}
 class MakeAIMoveEvent extends GameRoomEvent {}
 
 class DeselectPieceEvent extends GameRoomEvent {}
+
+// New events for hint functionality
+class RequestHintEvent extends GameRoomEvent {}
+
+class DismissHintEvent extends GameRoomEvent {}
+
+class ChangeAIDifficultyEvent extends GameRoomEvent {
+  final int difficultyLevel; // 1-4: Random, Minimax depth 1-3
+  ChangeAIDifficultyEvent({required this.difficultyLevel});
+}

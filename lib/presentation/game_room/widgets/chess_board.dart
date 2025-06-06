@@ -80,6 +80,11 @@ class _ChessBoardState extends State<ChessBoard> {
                             final isDraggedPiece =
                                 _draggedPiecePosition?.row == row &&
                                     _draggedPiecePosition?.col == col;
+                            final isHintFrom =
+                                state.hintFromPosition?.row == row &&
+                                    state.hintFromPosition?.col == col;
+                            final isHintTo = state.hintToPosition?.row == row &&
+                                state.hintToPosition?.col == col;
 
                             return ChessSquare(
                               row: row,
@@ -89,6 +94,8 @@ class _ChessBoardState extends State<ChessBoard> {
                               isHovered: isHovered,
                               isPossibleMove: isPossibleMove,
                               isDraggedPiece: isDraggedPiece,
+                              isHintFrom: isHintFrom,
+                              isHintTo: isHintTo,
                               onTap: _onSquareTapped,
                               onPieceDropped: _onPieceDropped,
                               onHoverEnter: _onHoverEnter,

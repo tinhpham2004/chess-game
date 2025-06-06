@@ -26,6 +26,9 @@ class ChessBoardManager {
 
   /// Initialize board with standard chess setup
   void initializeBoard() {
+    // Clear any existing history
+    clearHistory();
+
     _board = _setupInitialBoard();
     _currentTurn = PieceColor.white;
     _isWhiteKingInCheck = false;
@@ -257,11 +260,16 @@ class ChessBoardManager {
 
   /// Reset board to initial state
   void reset() {
+    // Clear history first to ensure clean slate
+    clearHistory();
+
+    // Reset board to initial state
     _board = _setupInitialBoard();
     _currentTurn = PieceColor.white;
     _isWhiteKingInCheck = false;
     _isBlackKingInCheck = false;
-    clearHistory();
+
+    // Save the initial state as the first memento
     _saveCurrentState();
   }
 

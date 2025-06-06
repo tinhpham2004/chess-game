@@ -13,6 +13,8 @@ class ChessSquare extends StatelessWidget {
   final bool isHovered;
   final bool isPossibleMove;
   final bool isDraggedPiece;
+  final bool isHintFrom;
+  final bool isHintTo;
   final Function(int row, int col) onTap;
   final Function(Position from, Position to) onPieceDropped;
   final Function(Position position) onHoverEnter;
@@ -29,6 +31,8 @@ class ChessSquare extends StatelessWidget {
     required this.isHovered,
     required this.isPossibleMove,
     required this.isDraggedPiece,
+    this.isHintFrom = false,
+    this.isHintTo = false,
     required this.onTap,
     required this.onPieceDropped,
     required this.onHoverEnter,
@@ -74,9 +78,13 @@ class ChessSquare extends StatelessWidget {
       decoration: BoxDecoration(
         border: isSelected
             ? Border.all(color: Colors.amber, width: 4)
-            : isHovered && isPossibleMove
-                ? Border.all(color: Colors.green, width: 2)
-                : null,
+            : isHintFrom
+                ? Border.all(color: Colors.blue, width: 3)
+                : isHintTo
+                    ? Border.all(color: Colors.purple, width: 3)
+                    : isHovered && isPossibleMove
+                        ? Border.all(color: Colors.green, width: 2)
+                        : null,
         boxShadow: isSelected
             ? [
                 BoxShadow(
@@ -85,15 +93,31 @@ class ChessSquare extends StatelessWidget {
                   spreadRadius: 2,
                 ),
               ]
-            : isHovered && isPossibleMove
+            : isHintFrom
                 ? [
                     BoxShadow(
-                      color: Colors.green.withOpacity(0.3),
-                      blurRadius: 4,
+                      color: Colors.blue.withOpacity(0.4),
+                      blurRadius: 6,
                       spreadRadius: 1,
                     ),
                   ]
-                : null,
+                : isHintTo
+                    ? [
+                        BoxShadow(
+                          color: Colors.purple.withOpacity(0.4),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    : isHovered && isPossibleMove
+                        ? [
+                            BoxShadow(
+                              color: Colors.green.withOpacity(0.3),
+                              blurRadius: 4,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
       ),
       child: SvgPicture.asset(
         _isWhiteSquare ? Assets.icons.squareWhite : Assets.icons.squareBlack,
