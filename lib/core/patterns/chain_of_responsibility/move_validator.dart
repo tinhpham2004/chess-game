@@ -1,6 +1,25 @@
 import 'package:chess_game/core/models/chess_piece.dart';
 import 'package:chess_game/core/models/position.dart';
 
+/// FIDE rule validation context for move validation
+class FIDERuleContext {
+  final List<String> moveHistory;
+  final String? lastDoubleMovePawn; // For en passant
+  final int fiftyMoveCounter;
+  final List<String> positionHistory; // For threefold repetition
+  final int moveNumber;
+  final bool isWhitesTurn;
+
+  const FIDERuleContext({
+    required this.moveHistory,
+    this.lastDoubleMovePawn,
+    required this.fiftyMoveCounter,
+    required this.positionHistory,
+    required this.moveNumber,
+    required this.isWhitesTurn,
+  });
+}
+
 /// Abstract handler for the Chain of Responsibility pattern
 abstract class MoveValidator {
   MoveValidator? _nextValidator;
@@ -10,25 +29,28 @@ abstract class MoveValidator {
     return validator;
   }
 
-  bool validate(ChessPiece piece, Position from, Position to,
-      List<ChessPiece> allPieces) {
-    final result = handleValidation(piece, from, to, allPieces);
+  bool validate(
+      ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces,
+      [FIDERuleContext? context]) {
+    final result = handleValidation(piece, from, to, allPieces, context);
 
     if (!result) return false;
     if (_nextValidator == null) return true;
 
-    return _nextValidator!.validate(piece, from, to, allPieces);
+    return _nextValidator!.validate(piece, from, to, allPieces, context);
   }
 
   bool handleValidation(
-      ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces);
+      ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces,
+      [FIDERuleContext? context]);
 }
 
 /// 1. Validates the piece is actually moving (from != to)
 class ActualMoveValidator extends MoveValidator {
   @override
-  bool handleValidation(ChessPiece piece, Position from, Position to,
-      List<ChessPiece> allPieces) {
+  bool handleValidation(
+      ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces,
+      [FIDERuleContext? context]) {
     return from != to;
   }
 }
@@ -36,8 +58,9 @@ class ActualMoveValidator extends MoveValidator {
 /// 2. Validates if the position is inside the board
 class BoundsValidator extends MoveValidator {
   @override
-  bool handleValidation(ChessPiece piece, Position from, Position to,
-      List<ChessPiece> allPieces) {
+  bool handleValidation(
+      ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces,
+      [FIDERuleContext? context]) {
     return to.row >= 0 && to.row < 8 && to.col >= 0 && to.col < 8;
   }
 }
@@ -45,8 +68,9 @@ class BoundsValidator extends MoveValidator {
 /// 3. Validates if the position is occupied by a piece of the same color
 class OccupancyValidator extends MoveValidator {
   @override
-  bool handleValidation(ChessPiece piece, Position from, Position to,
-      List<ChessPiece> allPieces) {
+  bool handleValidation(
+      ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces,
+      [FIDERuleContext? context]) {
     final pieceAtDestination =
         allPieces.where((p) => p.position == to).firstOrNull;
 
@@ -58,8 +82,9 @@ class OccupancyValidator extends MoveValidator {
 /// 4. Validates if the move is according to piece movement rules
 class PieceMovementValidator extends MoveValidator {
   @override
-  bool handleValidation(ChessPiece piece, Position from, Position to,
-      List<ChessPiece> allPieces) {
+  bool handleValidation(
+      ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces,
+      [FIDERuleContext? context]) {
     switch (piece.type) {
       case PieceType.pawn:
         return _validatePawnMove(piece, from, to, allPieces);
@@ -176,8 +201,9 @@ class PieceMovementValidator extends MoveValidator {
 /// 5. Special handler for castling moves
 class CastlingValidator extends MoveValidator {
   @override
-  bool handleValidation(ChessPiece piece, Position from, Position to,
-      List<ChessPiece> allPieces) {
+  bool handleValidation(
+      ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces,
+      [FIDERuleContext? context]) {
     if (piece.type != PieceType.king) return true;
 
     final deltaCol = to.col - from.col;
@@ -317,11 +343,12 @@ class CastlingValidator extends MoveValidator {
   }
 }
 
-/// 6. Validates en passant capture (limited without game history)
+/// 6. Validates en passant capture with proper game state validation
 class EnPassantValidator extends MoveValidator {
   @override
-  bool handleValidation(ChessPiece piece, Position from, Position to,
-      List<ChessPiece> allPieces) {
+  bool handleValidation(
+      ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces,
+      [FIDERuleContext? context]) {
     if (piece.type != PieceType.pawn) return true;
 
     final direction = piece.color == PieceColor.white ? -1 : 1;
@@ -351,17 +378,24 @@ class EnPassantValidator extends MoveValidator {
             p.position == adjacentPawnPos)
         .firstOrNull;
 
-    // Without game history, we can only validate the board position
-    // In a complete implementation, we'd need to verify the pawn just moved two squares
-    return pawnToCapture != null;
+    if (pawnToCapture == null) return false;
+
+    // FIDE rule: En passant is only valid if the opponent pawn just moved two squares
+    if (context?.lastDoubleMovePawn != null) {
+      return context!.lastDoubleMovePawn == '${to.col}${from.row}';
+    }
+
+    // Without game context, we can only validate the board position
+    return true;
   }
 }
 
 /// 7. Validates pawn promotion
 class PawnPromotionValidator extends MoveValidator {
   @override
-  bool handleValidation(ChessPiece piece, Position from, Position to,
-      List<ChessPiece> allPieces) {
+  bool handleValidation(
+      ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces,
+      [FIDERuleContext? context]) {
     if (piece.type != PieceType.pawn) return true;
 
     // Allow move to promotion rank
@@ -373,8 +407,9 @@ class PawnPromotionValidator extends MoveValidator {
 /// 8. Validates move doesn't leave own king in check
 class KingSafetyValidator extends MoveValidator {
   @override
-  bool handleValidation(ChessPiece piece, Position from, Position to,
-      List<ChessPiece> allPieces) {
+  bool handleValidation(
+      ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces,
+      [FIDERuleContext? context]) {
     // Create a deep copy and simulate the move
     final simulatedPieces = allPieces.map((p) => p.clone()).toList();
 
@@ -541,8 +576,9 @@ class KingSafetyValidator extends MoveValidator {
 /// 9. Validates absolute pin situations
 class AbsolutePinValidator extends MoveValidator {
   @override
-  bool handleValidation(ChessPiece piece, Position from, Position to,
-      List<ChessPiece> allPieces) {
+  bool handleValidation(
+      ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces,
+      [FIDERuleContext? context]) {
     // Skip if it's the king moving (handled by KingSafetyValidator)
     if (piece.type == PieceType.king) return true;
 
@@ -694,6 +730,203 @@ class AbsolutePinValidator extends MoveValidator {
   }
 }
 
+/// 10. Validates fifty-move rule (no pawn move or capture in 50 moves)
+class FiftyMoveRuleValidator extends MoveValidator {
+  @override
+  bool handleValidation(
+      ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces,
+      [FIDERuleContext? context]) {
+    // This validator doesn't block moves, it's used to check draw conditions
+    return true;
+  }
+
+  /// Check if fifty-move rule draw can be claimed
+  bool canClaimFiftyMoveRule(FIDERuleContext context) {
+    return context.fiftyMoveCounter >=
+        100; // 50 moves for each side = 100 half-moves
+  }
+}
+
+/// 11. Validates threefold repetition rule
+class ThreefoldRepetitionValidator extends MoveValidator {
+  @override
+  bool handleValidation(
+      ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces,
+      [FIDERuleContext? context]) {
+    // This validator doesn't block moves, it's used to check draw conditions
+    return true;
+  }
+
+  /// Check if threefold repetition draw can be claimed
+  bool canClaimThreefoldRepetition(
+      FIDERuleContext context, List<ChessPiece> pieces) {
+    if (context.positionHistory.isEmpty) return false;
+
+    // Get the current position (would be the position after the proposed move)
+    final currentPosition = _getCurrentPositionKey(pieces);
+
+    // Count occurrences of this position
+    int count = 0;
+    for (final position in context.positionHistory) {
+      if (position == currentPosition) {
+        count++;
+      }
+    }
+
+    return count >= 3;
+  }
+
+  String _getCurrentPositionKey(List<ChessPiece> pieces) {
+    // Create a simplified position string for comparison
+    // This should include piece positions and castling rights
+    final sortedPieces = pieces.toList()
+      ..sort((a, b) {
+        final rowComparison = a.position.row.compareTo(b.position.row);
+        if (rowComparison != 0) return rowComparison;
+        return a.position.col.compareTo(b.position.col);
+      });
+
+    return sortedPieces
+        .map((p) =>
+            '${p.color.name[0]}${p.type.name[0]}${p.position.col}${p.position.row}')
+        .join('-');
+  }
+}
+
+/// 12. Validates insufficient material for checkmate
+class InsufficientMaterialValidator extends MoveValidator {
+  @override
+  bool handleValidation(
+      ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces,
+      [FIDERuleContext? context]) {
+    // This validator doesn't block moves, it's used to check draw conditions
+    return true;
+  }
+
+  /// Check if the position has insufficient material for checkmate
+  bool hasInsufficientMaterial(List<ChessPiece> pieces) {
+    final whitePieces =
+        pieces.where((p) => p.color == PieceColor.white).toList();
+    final blackPieces =
+        pieces.where((p) => p.color == PieceColor.black).toList();
+
+    // Both sides must have insufficient material
+    return _hasSideInsufficientMaterial(whitePieces) &&
+        _hasSideInsufficientMaterial(blackPieces);
+  }
+
+  bool _hasSideInsufficientMaterial(List<ChessPiece> pieces) {
+    // Remove kings for counting
+    final nonKingPieces =
+        pieces.where((p) => p.type != PieceType.king).toList();
+
+    // King vs King
+    if (nonKingPieces.isEmpty) return true;
+
+    // King and Bishop vs King
+    if (nonKingPieces.length == 1 &&
+        nonKingPieces.first.type == PieceType.bishop) {
+      return true;
+    }
+
+    // King and Knight vs King
+    if (nonKingPieces.length == 1 &&
+        nonKingPieces.first.type == PieceType.knight) {
+      return true;
+    }
+
+    // King and two Knights vs King (very rare but insufficient)
+    if (nonKingPieces.length == 2 &&
+        nonKingPieces.every((p) => p.type == PieceType.knight)) {
+      return true;
+    }
+
+    return false;
+  }
+}
+
+/// 13. Validates stalemate conditions
+class StalemateValidator extends MoveValidator {
+  @override
+  bool handleValidation(
+      ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces,
+      [FIDERuleContext? context]) {
+    // This validator doesn't block moves, it's used to check game end conditions
+    return true;
+  }
+
+  /// Check if the current position is stalemate
+  bool isStalemate(PieceColor colorToMove, List<ChessPiece> pieces) {
+    // King must not be in check
+    final kingSafetyValidator = KingSafetyValidator();
+    if (kingSafetyValidator.isKingInCheck(colorToMove, pieces)) {
+      return false;
+    }
+
+    // No legal moves available
+    return !_hasLegalMoves(colorToMove, pieces);
+  }
+
+  bool _hasLegalMoves(PieceColor color, List<ChessPiece> pieces) {
+    final playerPieces = pieces.where((p) => p.color == color);
+    final validator = MoveValidatorChain.createCompleteChain();
+
+    for (final piece in playerPieces) {
+      for (int row = 0; row < 8; row++) {
+        for (int col = 0; col < 8; col++) {
+          final to = Position(col, row);
+          if (validator.validate(piece, piece.position, to, pieces)) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+}
+
+/// 14. Validates checkmate conditions
+class CheckmateValidator extends MoveValidator {
+  @override
+  bool handleValidation(
+      ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces,
+      [FIDERuleContext? context]) {
+    // This validator doesn't block moves, it's used to check game end conditions
+    return true;
+  }
+
+  /// Check if the current position is checkmate
+  bool isCheckmate(PieceColor colorToMove, List<ChessPiece> pieces) {
+    // King must be in check
+    final kingSafetyValidator = KingSafetyValidator();
+    if (!kingSafetyValidator.isKingInCheck(colorToMove, pieces)) {
+      return false;
+    }
+
+    // No legal moves available to escape check
+    return !_hasLegalMoves(colorToMove, pieces);
+  }
+
+  bool _hasLegalMoves(PieceColor color, List<ChessPiece> pieces) {
+    final playerPieces = pieces.where((p) => p.color == color);
+    final validator = MoveValidatorChain.createCompleteChain();
+
+    for (final piece in playerPieces) {
+      for (int row = 0; row < 8; row++) {
+        for (int col = 0; col < 8; col++) {
+          final to = Position(col, row);
+          if (validator.validate(piece, piece.position, to, pieces)) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+}
+
 /// Factory to create chains of validators
 class MoveValidatorChain {
   /// Create the complete chain with all validators
@@ -707,6 +940,11 @@ class MoveValidatorChain {
     final pawnPromotionValidator = PawnPromotionValidator();
     final absolutePinValidator = AbsolutePinValidator();
     final kingSafetyValidator = KingSafetyValidator();
+    final fiftyMoveRuleValidator = FiftyMoveRuleValidator();
+    final threefoldRepetitionValidator = ThreefoldRepetitionValidator();
+    final insufficientMaterialValidator = InsufficientMaterialValidator();
+    final stalemateValidator = StalemateValidator();
+    final checkmateValidator = CheckmateValidator();
 
     // Chain them in optimal order (fail fast on simple checks)
     actualMoveValidator
@@ -717,7 +955,12 @@ class MoveValidatorChain {
         .setNext(enPassantValidator)
         .setNext(pawnPromotionValidator)
         .setNext(absolutePinValidator)
-        .setNext(kingSafetyValidator);
+        .setNext(kingSafetyValidator)
+        .setNext(fiftyMoveRuleValidator)
+        .setNext(threefoldRepetitionValidator)
+        .setNext(insufficientMaterialValidator)
+        .setNext(stalemateValidator)
+        .setNext(checkmateValidator);
 
     return actualMoveValidator;
   }
@@ -759,38 +1002,93 @@ class MoveValidatorChain {
 
     return boundsValidator;
   }
+
+  /// Create FIDE rule validators (for game end condition checking)
+  static Map<String, MoveValidator> createFideRuleValidators() {
+    return {
+      'fiftyMoveRule': FiftyMoveRuleValidator(),
+      'threefoldRepetition': ThreefoldRepetitionValidator(),
+      'insufficientMaterial': InsufficientMaterialValidator(),
+      'stalemate': StalemateValidator(),
+      'checkmate': CheckmateValidator(),
+    };
+  }
 }
 
 /// Wrapper class for GameRoom usage
 class GameRoomMoveValidator {
   final MoveValidator _validatorChain;
   final MoveValidator _aiValidatorChain;
+  final Map<String, MoveValidator> _fideValidators;
 
   GameRoomMoveValidator()
       : _validatorChain = MoveValidatorChain.createCompleteChain(),
-        _aiValidatorChain = MoveValidatorChain.createAIChain();
+        _aiValidatorChain = MoveValidatorChain.createAIChain(),
+        _fideValidators = MoveValidatorChain.createFideRuleValidators();
 
   bool validateMove(
       ChessPiece piece, Position from, Position to, List<ChessPiece> allPieces,
-      {bool isAI = false}) {
+      {bool isAI = false, FIDERuleContext? context}) {
     final chain = isAI ? _aiValidatorChain : _validatorChain;
-    return chain.validate(piece, from, to, allPieces);
+    return chain.validate(piece, from, to, allPieces, context);
   }
 
   /// Get all valid moves for a piece
   List<Position> getValidMovesForPiece(
-      ChessPiece piece, List<ChessPiece> allPieces) {
+      ChessPiece piece, List<ChessPiece> allPieces,
+      [FIDERuleContext? context]) {
     final validMoves = <Position>[];
 
     for (int row = 0; row < 8; row++) {
       for (int col = 0; col < 8; col++) {
         final to = Position(col, row);
-        if (validateMove(piece, piece.position, to, allPieces)) {
+        if (validateMove(piece, piece.position, to, allPieces,
+            context: context)) {
           validMoves.add(to);
         }
       }
     }
 
     return validMoves;
+  }
+
+  /// Check if fifty-move rule draw can be claimed
+  bool canClaimFiftyMoveRule(FIDERuleContext context) {
+    final validator =
+        _fideValidators['fiftyMoveRule'] as FiftyMoveRuleValidator;
+    return validator.canClaimFiftyMoveRule(context);
+  }
+
+  /// Check if threefold repetition draw can be claimed
+  bool canClaimThreefoldRepetition(
+      FIDERuleContext context, List<ChessPiece> pieces) {
+    final validator =
+        _fideValidators['threefoldRepetition'] as ThreefoldRepetitionValidator;
+    return validator.canClaimThreefoldRepetition(context, pieces);
+  }
+
+  /// Check if the position has insufficient material for checkmate
+  bool hasInsufficientMaterial(List<ChessPiece> pieces) {
+    final validator = _fideValidators['insufficientMaterial']
+        as InsufficientMaterialValidator;
+    return validator.hasInsufficientMaterial(pieces);
+  }
+
+  /// Check if the current position is stalemate
+  bool isStalemate(PieceColor colorToMove, List<ChessPiece> pieces) {
+    final validator = _fideValidators['stalemate'] as StalemateValidator;
+    return validator.isStalemate(colorToMove, pieces);
+  }
+
+  /// Check if the current position is checkmate
+  bool isCheckmate(PieceColor colorToMove, List<ChessPiece> pieces) {
+    final validator = _fideValidators['checkmate'] as CheckmateValidator;
+    return validator.isCheckmate(colorToMove, pieces);
+  }
+
+  /// Check if king is in check
+  bool isKingInCheck(PieceColor kingColor, List<ChessPiece> pieces) {
+    final kingSafetyValidator = KingSafetyValidator();
+    return kingSafetyValidator.isKingInCheck(kingColor, pieces);
   }
 }

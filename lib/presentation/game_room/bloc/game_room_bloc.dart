@@ -14,6 +14,7 @@ import 'package:chess_game/presentation/game_room/memento/chess_board_manager.da
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'dart:async';
 
 part 'game_room_event.dart';
 part 'game_room_state.dart';
@@ -24,8 +25,14 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
   final MatchHistoryRepository _matchHistoryRepository;
   final GameRoomCommandManager _commandManager = GameRoomCommandManager();
   final ChessBoardManager _boardManager = ChessBoardManager();
+  final GameRoomMoveValidator _moveValidator = GameRoomMoveValidator();
   GameRoom? _currentGameRoom;
   ChessAIPlayer? _aiPlayer;
+
+  // Timer functionality
+  Timer? _gameTimer;
+  int _whiteTimeLeft = 0; // in seconds
+  int _blackTimeLeft = 0; // in seconds
 
   GameRoomBloc(this._gameRoomRepository, this._matchHistoryRepository)
       : super(const GameRoomState()) {
@@ -51,6 +58,17 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     on<RequestHintEvent>(_onRequestHint);
     on<DismissHintEvent>(_onDismissHint);
     on<ChangeAIDifficultyEvent>(_onChangeAIDifficulty);
+
+    // New event handlers for FIDE rules
+    on<CheckGameEndConditionsEvent>(_onCheckGameEndConditions);
+    on<ClaimDrawEvent>(_onClaimDraw);
+
+    // Timer event handlers
+    on<StartTimerEvent>(_onStartTimer);
+    on<PauseTimerEvent>(_onPauseTimer);
+    on<ResumeTimerEvent>(_onResumeTimer);
+    on<TimerTickEvent>(_onTimerTick);
+    on<TimeoutEvent>(_onTimeout);
   }
 
   void _onInitialized(GameRoomInitialized event, Emitter<GameRoomState> emit) {
@@ -205,7 +223,24 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
         clearHint: true,
         isWhiteKingInCheck: false,
         isBlackKingInCheck: false,
+        // Initialize FIDE rule fields for new game
+        pgnMoveHistory: [],
+        fiftyMoveCounter: 0,
+        lastDoubleMovePawn: null,
+        moveNumber: 1,
+        positionHistory: [],
+        // Initialize timer state
+        whiteTimeLeft: event.gameConfig.timeControlMinutes * 60,
+        blackTimeLeft: event.gameConfig.timeControlMinutes * 60,
+        timerRunning: false,
+        timerPaused: false,
+        activeTimerColor: PieceColor.white,
       ));
+
+      // Start the game timer if time control is enabled
+      if (event.gameConfig.timeControlMinutes > 0) {
+        add(StartTimerEvent());
+      }
 
       // If white is AI, make the first move
       if (aiColor == PieceColor.white) {
@@ -309,10 +344,43 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
 
     // Save the board state after the turn is switched
     _boardManager.saveCurrentState();
+
+    // Generate PGN notation for the move
+    final pgnMove =
+        _generatePGNMove(piece, event.from, event.to, capturedPiece);
+    final newPgnMoveHistory = [...state.pgnMoveHistory, pgnMove];
+
+    // Update simple move history for compatibility
     final newMoveHistory = [
       ...state.moveHistory,
       '${event.from.toString()}-${event.to.toString()}'
     ];
+
+    // Update fifty-move counter
+    int newFiftyMoveCounter = state.fiftyMoveCounter + 1;
+    if (piece.type == PieceType.pawn || capturedPiece != null) {
+      newFiftyMoveCounter = 0; // Reset on pawn move or capture
+    }
+
+    // Track last double-move pawn for en passant
+    String? newLastDoubleMovePawn;
+    if (piece.type == PieceType.pawn &&
+        (event.from.row - event.to.row).abs() == 2) {
+      newLastDoubleMovePawn = event.to.toString();
+    }
+
+    // Update move number (increments after black's move)
+    int newMoveNumber = state.moveNumber;
+    if (!state.isWhitesTurn) {
+      // If it was black's turn (now switching to white)
+      newMoveNumber++;
+    }
+
+    // Generate current position FEN for threefold repetition tracking
+    final allPieces = _boardManager.getAllPieces();
+    final currentPositionFEN =
+        _generateFENPosition(allPieces, !state.isWhitesTurn);
+    final newPositionHistory = [...state.positionHistory, currentPositionFEN];
 
     // Check for game end conditions
     final isGameOver = _checkGameEnd(newBoard, !state.isWhitesTurn);
@@ -323,6 +391,22 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
 
     // Check if either king is in check after the move
     final checkStatus = _getCheckStatus();
+
+    // Handle timer logic when move is completed
+    PieceColor newActiveTimerColor =
+        !state.isWhitesTurn ? PieceColor.white : PieceColor.black;
+
+    // Add increment time to the player who just moved (if timer is running)
+    if (state.timerRunning && state.gameConfig != null) {
+      final increment = state.gameConfig!.incrementSeconds;
+      if (state.isWhitesTurn) {
+        // White just moved, add increment to white's time
+        _whiteTimeLeft += increment;
+      } else {
+        // Black just moved, add increment to black's time
+        _blackTimeLeft += increment;
+      }
+    }
 
     emit(state.copyWith(
       board: newBoard,
@@ -338,6 +422,16 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
       isBlackKingInCheck: checkStatus.$2,
       whiteAttackingPieces: checkStatus.$3,
       blackAttackingPieces: checkStatus.$4,
+      // FIDE rule tracking
+      pgnMoveHistory: newPgnMoveHistory,
+      fiftyMoveCounter: newFiftyMoveCounter,
+      lastDoubleMovePawn: newLastDoubleMovePawn,
+      moveNumber: newMoveNumber,
+      positionHistory: newPositionHistory,
+      // Timer updates
+      activeTimerColor: newActiveTimerColor,
+      whiteTimeLeft: _whiteTimeLeft,
+      blackTimeLeft: _blackTimeLeft,
     ));
 
     // If game ended, save match history
@@ -347,6 +441,9 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
         winner: winner,
       ));
     } else if (!isGameOver) {
+      // Check FIDE rule end conditions after each move
+      add(CheckGameEndConditionsEvent());
+
       // Check if it's AI's turn to move
       final nextPlayerColor =
           state.isWhitesTurn ? PieceColor.black : PieceColor.white;
@@ -1149,5 +1246,378 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
         : <Position>[];
 
     return (whiteInCheck, blackInCheck, whiteAttackers, blackAttackers);
+  }
+
+  void _onCheckGameEndConditions(
+      CheckGameEndConditionsEvent event, Emitter<GameRoomState> emit) {
+    if (state.gameEnded || !state.gameStarted) return;
+
+    final allPieces = _boardManager.getAllPieces();
+    final currentPlayerColor =
+        state.isWhitesTurn ? PieceColor.white : PieceColor.black;
+
+    // Create game state context for FIDE rule validation
+    final context = FIDERuleContext(
+      moveHistory: state.pgnMoveHistory,
+      lastDoubleMovePawn: state.lastDoubleMovePawn,
+      fiftyMoveCounter: state.fiftyMoveCounter,
+      positionHistory: state.positionHistory,
+      moveNumber: state.moveNumber,
+      isWhitesTurn: state.isWhitesTurn,
+    );
+
+    // Check checkmate first
+    if (_moveValidator.isCheckmate(currentPlayerColor, allPieces)) {
+      _gameTimer?.cancel(); // Stop timer when game ends
+      final winner = currentPlayerColor == PieceColor.white ? 'Black' : 'White';
+      emit(state.copyWith(
+        gameEnded: true,
+        winner: winner,
+        timerRunning: false,
+        timerPaused: false,
+      ));
+      add(SaveMatchHistoryEvent(
+        gameId: _currentGameRoom?.id ?? '',
+        winner: winner,
+      ));
+      return;
+    }
+
+    // Check stalemate
+    if (_moveValidator.isStalemate(currentPlayerColor, allPieces)) {
+      _gameTimer?.cancel(); // Stop timer when game ends
+      emit(state.copyWith(
+        gameEnded: true,
+        winner: 'Draw',
+        timerRunning: false,
+        timerPaused: false,
+      ));
+      add(SaveMatchHistoryEvent(
+        gameId: _currentGameRoom?.id ?? '',
+        winner: 'Draw',
+      ));
+      return;
+    }
+
+    // Check insufficient material
+    if (_moveValidator.hasInsufficientMaterial(allPieces)) {
+      _gameTimer?.cancel(); // Stop timer when game ends
+      emit(state.copyWith(
+        gameEnded: true,
+        winner: 'Draw',
+        timerRunning: false,
+        timerPaused: false,
+      ));
+      add(SaveMatchHistoryEvent(
+        gameId: _currentGameRoom?.id ?? '',
+        winner: 'Draw',
+      ));
+      return;
+    }
+
+    // Check fifty-move rule (automatic draw)
+    if (state.fiftyMoveCounter >= 100) {
+      // 50 moves for each player = 100 half-moves
+      _gameTimer?.cancel(); // Stop timer when game ends
+      emit(state.copyWith(
+        gameEnded: true,
+        winner: 'Draw',
+        timerRunning: false,
+        timerPaused: false,
+      ));
+      add(SaveMatchHistoryEvent(
+        gameId: _currentGameRoom?.id ?? '',
+        winner: 'Draw',
+      ));
+      return;
+    }
+
+    // Check threefold repetition (automatic draw after 5 repetitions)
+    if (_moveValidator.canClaimThreefoldRepetition(context, allPieces)) {
+      final currentPosition =
+          _generateFENPosition(allPieces, state.isWhitesTurn);
+      final repetitions =
+          state.positionHistory.where((pos) => pos == currentPosition).length;
+      if (repetitions >= 5) {
+        // Automatic draw after 5 repetitions
+        _gameTimer?.cancel(); // Stop timer when game ends
+        emit(state.copyWith(
+          gameEnded: true,
+          winner: 'Draw',
+          timerRunning: false,
+          timerPaused: false,
+        ));
+        add(SaveMatchHistoryEvent(
+          gameId: _currentGameRoom?.id ?? '',
+          winner: 'Draw',
+        ));
+        return;
+      }
+    }
+  }
+
+  void _onClaimDraw(ClaimDrawEvent event, Emitter<GameRoomState> emit) {
+    if (state.gameEnded || !state.gameStarted) return;
+
+    final allPieces = _boardManager.getAllPieces();
+    final context = FIDERuleContext(
+      moveHistory: state.pgnMoveHistory,
+      lastDoubleMovePawn: state.lastDoubleMovePawn,
+      fiftyMoveCounter: state.fiftyMoveCounter,
+      positionHistory: state.positionHistory,
+      moveNumber: state.moveNumber,
+      isWhitesTurn: state.isWhitesTurn,
+    );
+
+    bool canClaimDraw = false;
+
+    switch (event.reason) {
+      case 'fifty_move_rule':
+        canClaimDraw = _moveValidator.canClaimFiftyMoveRule(context);
+        break;
+      case 'threefold_repetition':
+        canClaimDraw =
+            _moveValidator.canClaimThreefoldRepetition(context, allPieces);
+        break;
+      case 'insufficient_material':
+        canClaimDraw = _moveValidator.hasInsufficientMaterial(allPieces);
+        break;
+      case 'stalemate':
+        final currentPlayerColor =
+            state.isWhitesTurn ? PieceColor.white : PieceColor.black;
+        canClaimDraw =
+            _moveValidator.isStalemate(currentPlayerColor, allPieces);
+        break;
+      default:
+        return; // Invalid draw claim reason
+    }
+
+    if (canClaimDraw) {
+      _gameTimer?.cancel(); // Stop timer when game ends
+      emit(state.copyWith(
+        gameEnded: true,
+        winner: 'Draw',
+        timerRunning: false,
+        timerPaused: false,
+      ));
+      add(SaveMatchHistoryEvent(
+        gameId: _currentGameRoom?.id ?? '',
+        winner: 'Draw',
+      ));
+    }
+    // If draw cannot be claimed, do nothing (invalid claim)
+  }
+
+  /// Generate FEN position string for position history tracking
+  String _generateFENPosition(List<ChessPiece> pieces, bool isWhitesTurn) {
+    // Create an 8x8 board representation
+    final board = List.generate(8, (_) => List<String?>.filled(8, null));
+
+    // Place pieces on the board
+    for (final piece in pieces) {
+      final fenChar = _pieceToFEN(piece);
+      board[piece.position.row][piece.position.col] = fenChar;
+    }
+
+    // Convert board to FEN notation
+    final rows = <String>[];
+    for (int row = 0; row < 8; row++) {
+      String rowStr = '';
+      int emptyCount = 0;
+      for (int col = 0; col < 8; col++) {
+        if (board[row][col] == null) {
+          emptyCount++;
+        } else {
+          if (emptyCount > 0) {
+            rowStr += emptyCount.toString();
+            emptyCount = 0;
+          }
+          rowStr += board[row][col]!;
+        }
+      }
+      if (emptyCount > 0) {
+        rowStr += emptyCount.toString();
+      }
+      rows.add(rowStr);
+    }
+
+    // Join rows with '/' and add turn indicator
+    final boardFen = rows.join('/');
+    final turnChar = isWhitesTurn ? 'w' : 'b';
+
+    return '$boardFen $turnChar';
+  }
+
+  /// Convert chess piece to FEN character
+  String _pieceToFEN(ChessPiece piece) {
+    String char;
+    switch (piece.type) {
+      case PieceType.pawn:
+        char = 'p';
+        break;
+      case PieceType.rook:
+        char = 'r';
+        break;
+      case PieceType.knight:
+        char = 'n';
+        break;
+      case PieceType.bishop:
+        char = 'b';
+        break;
+      case PieceType.queen:
+        char = 'q';
+        break;
+      case PieceType.king:
+        char = 'k';
+        break;
+    }
+
+    return piece.color == PieceColor.white ? char.toUpperCase() : char;
+  }
+
+  /// Generate PGN notation for a move
+  String _generatePGNMove(
+      ChessPiece piece, Position from, Position to, ChessPiece? capturedPiece) {
+    String move = '';
+
+    // Add piece identifier (except for pawns)
+    if (piece.type != PieceType.pawn) {
+      move += _pieceToFEN(piece).toUpperCase();
+    }
+
+    // Add capture notation
+    if (capturedPiece != null) {
+      if (piece.type == PieceType.pawn) {
+        move += String.fromCharCode(
+            97 + from.col); // Add file letter for pawn captures
+      }
+      move += 'x';
+    }
+
+    // Add destination square
+    move += String.fromCharCode(97 + to.col); // File (a-h)
+    move += (8 - to.row).toString(); // Rank (1-8)
+
+    return move;
+  }
+
+  // Timer Event Handlers
+  void _onStartTimer(StartTimerEvent event, Emitter<GameRoomState> emit) {
+    // Initialize timer values from current game config if available
+    if (state.gameConfig != null) {
+      _whiteTimeLeft = state.gameConfig!.timeControlMinutes * 60;
+      _blackTimeLeft = state.gameConfig!.timeControlMinutes * 60;
+    }
+
+    // Cancel existing timer if any
+    _gameTimer?.cancel();
+
+    // Start timer with 1-second intervals
+    _gameTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      add(TimerTickEvent(
+        whiteTimeLeft: _whiteTimeLeft,
+        blackTimeLeft: _blackTimeLeft,
+      ));
+    });
+
+    emit(state.copyWith(
+      whiteTimeLeft: _whiteTimeLeft,
+      blackTimeLeft: _blackTimeLeft,
+      timerRunning: true,
+      timerPaused: false,
+      activeTimerColor:
+          state.isWhitesTurn ? PieceColor.white : PieceColor.black,
+    ));
+  }
+
+  void _onPauseTimer(PauseTimerEvent event, Emitter<GameRoomState> emit) {
+    _gameTimer?.cancel();
+
+    emit(state.copyWith(
+      timerRunning: false,
+      timerPaused: true,
+    ));
+  }
+
+  void _onResumeTimer(ResumeTimerEvent event, Emitter<GameRoomState> emit) {
+    // Only resume if timer was paused
+    if (state.timerPaused) {
+      _gameTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        add(TimerTickEvent(
+          whiteTimeLeft: _whiteTimeLeft,
+          blackTimeLeft: _blackTimeLeft,
+        ));
+      });
+
+      emit(state.copyWith(
+        timerRunning: true,
+        timerPaused: false,
+      ));
+    }
+  }
+
+  void _onTimerTick(TimerTickEvent event, Emitter<GameRoomState> emit) {
+    // Only tick if game is not over and timer is running
+    if (state.gameEnded || !state.timerRunning) {
+      return;
+    }
+
+    // Decrement time for the active player
+    if (state.activeTimerColor == PieceColor.white) {
+      _whiteTimeLeft--;
+      if (_whiteTimeLeft <= 0) {
+        add(TimeoutEvent(timeoutColor: PieceColor.white));
+        return;
+      }
+    } else {
+      _blackTimeLeft--;
+      if (_blackTimeLeft <= 0) {
+        add(TimeoutEvent(timeoutColor: PieceColor.black));
+        return;
+      }
+    }
+
+    emit(state.copyWith(
+      whiteTimeLeft: _whiteTimeLeft,
+      blackTimeLeft: _blackTimeLeft,
+    ));
+  }
+
+  void _onTimeout(TimeoutEvent event, Emitter<GameRoomState> emit) {
+    // Stop the timer
+    _gameTimer?.cancel();
+
+    // Determine winner (opponent of timed-out player)
+    final winner = event.timeoutColor == PieceColor.white ? 'Black' : 'White';
+
+    emit(state.copyWith(
+      gameEnded: true,
+      winner: winner,
+      timerRunning: false,
+      timerPaused: false,
+      whiteTimeLeft: _whiteTimeLeft,
+      blackTimeLeft: _blackTimeLeft,
+    ));
+
+    // Save match history with timeout result
+    _saveMatchHistoryOnTimeout(event.timeoutColor);
+  }
+
+  @override
+  Future<void> close() {
+    _gameTimer?.cancel();
+    return super.close();
+  }
+
+  /// Save match history when game ends due to timeout
+  void _saveMatchHistoryOnTimeout(PieceColor timedOutPlayer) {
+    final result = timedOutPlayer == PieceColor.white
+        ? 'Black wins on time'
+        : 'White wins on time';
+
+    add(SaveMatchHistoryEvent(
+      gameId: _currentGameRoom?.id ?? '',
+      winner: result,
+    ));
   }
 }

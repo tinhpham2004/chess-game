@@ -45,12 +45,26 @@ class GameRoomState extends Equatable {
   final Position? hintFromPosition;
   final Position? hintToPosition;
   final bool showingHint;
+  // Enhanced game state for FIDE rules
+  final List<String> pgnMoveHistory; // Full PGN notation for move history
+  final int fiftyMoveCounter; // Counter for 50-move rule
+  final String?
+      lastDoubleMovePawn; // Position of pawn that just moved two squares (for en passant)
+  final int moveNumber; // Current move number
+  final List<String> positionHistory; // FEN positions for threefold repetition
   // Check detection
   final bool isWhiteKingInCheck;
   final bool isBlackKingInCheck;
   // Attacking pieces positions
   final List<Position> whiteAttackingPieces;
   final List<Position> blackAttackingPieces;
+  // Timer and clock state
+  final int whiteTimeLeft; // in seconds
+  final int blackTimeLeft; // in seconds
+  final bool timerRunning;
+  final bool timerPaused;
+  final PieceColor?
+      activeTimerColor; // which player's timer is currently running
 
   const GameRoomState({
     this.gameRoom,
@@ -74,6 +88,18 @@ class GameRoomState extends Equatable {
     this.isBlackKingInCheck = false,
     this.whiteAttackingPieces = const [],
     this.blackAttackingPieces = const [],
+    // Timer and clock state
+    this.whiteTimeLeft = 0,
+    this.blackTimeLeft = 0,
+    this.timerRunning = false,
+    this.timerPaused = false,
+    this.activeTimerColor,
+    // Enhanced game state for FIDE rules
+    this.pgnMoveHistory = const [],
+    this.fiftyMoveCounter = 0,
+    this.lastDoubleMovePawn,
+    this.moveNumber = 1,
+    this.positionHistory = const [],
   });
 
   GameRoomState copyWith({
@@ -98,9 +124,22 @@ class GameRoomState extends Equatable {
     bool? isBlackKingInCheck,
     List<Position>? whiteAttackingPieces,
     List<Position>? blackAttackingPieces,
+    // Timer and clock state
+    int? whiteTimeLeft,
+    int? blackTimeLeft,
+    bool? timerRunning,
+    bool? timerPaused,
+    PieceColor? activeTimerColor,
+    // Enhanced game state for FIDE rules
+    List<String>? pgnMoveHistory,
+    int? fiftyMoveCounter,
+    String? lastDoubleMovePawn,
+    int? moveNumber,
+    List<String>? positionHistory,
     bool clearSelectedPosition = false,
     bool clearAnimatingMove = false,
     bool clearHint = false,
+    bool clearLastDoubleMovePawn = false,
   }) {
     return GameRoomState(
       gameRoom: gameRoom ?? this.gameRoom,
@@ -129,6 +168,20 @@ class GameRoomState extends Equatable {
       isBlackKingInCheck: isBlackKingInCheck ?? this.isBlackKingInCheck,
       whiteAttackingPieces: whiteAttackingPieces ?? this.whiteAttackingPieces,
       blackAttackingPieces: blackAttackingPieces ?? this.blackAttackingPieces,
+      // Timer and clock state
+      whiteTimeLeft: whiteTimeLeft ?? this.whiteTimeLeft,
+      blackTimeLeft: blackTimeLeft ?? this.blackTimeLeft,
+      timerRunning: timerRunning ?? this.timerRunning,
+      timerPaused: timerPaused ?? this.timerPaused,
+      activeTimerColor: activeTimerColor ?? this.activeTimerColor,
+      // Enhanced game state for FIDE rules
+      pgnMoveHistory: pgnMoveHistory ?? this.pgnMoveHistory,
+      fiftyMoveCounter: fiftyMoveCounter ?? this.fiftyMoveCounter,
+      lastDoubleMovePawn: clearLastDoubleMovePawn
+          ? null
+          : (lastDoubleMovePawn ?? this.lastDoubleMovePawn),
+      moveNumber: moveNumber ?? this.moveNumber,
+      positionHistory: positionHistory ?? this.positionHistory,
     );
   }
 
@@ -155,5 +208,17 @@ class GameRoomState extends Equatable {
         isBlackKingInCheck,
         whiteAttackingPieces,
         blackAttackingPieces,
+        // Timer and clock state
+        whiteTimeLeft,
+        blackTimeLeft,
+        timerRunning,
+        timerPaused,
+        activeTimerColor,
+        // Enhanced game state for FIDE rules
+        pgnMoveHistory,
+        fiftyMoveCounter,
+        lastDoubleMovePawn,
+        moveNumber,
+        positionHistory,
       ];
 }

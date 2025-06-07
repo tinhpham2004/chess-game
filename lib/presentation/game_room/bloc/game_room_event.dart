@@ -74,3 +74,30 @@ class ChangeAIDifficultyEvent extends GameRoomEvent {
   final int difficultyLevel; // 1-4: Random, Minimax depth 1-3
   ChangeAIDifficultyEvent({required this.difficultyLevel});
 }
+
+// FIDE rules events
+class CheckGameEndConditionsEvent extends GameRoomEvent {}
+
+class ClaimDrawEvent extends GameRoomEvent {
+  final String
+      reason; // "threefold_repetition", "fifty_move_rule", "insufficient_material", "stalemate"
+  ClaimDrawEvent({required this.reason});
+}
+
+// Timer and clock events
+class StartTimerEvent extends GameRoomEvent {}
+
+class PauseTimerEvent extends GameRoomEvent {}
+
+class ResumeTimerEvent extends GameRoomEvent {}
+
+class TimerTickEvent extends GameRoomEvent {
+  final int whiteTimeLeft; // in seconds
+  final int blackTimeLeft; // in seconds
+  TimerTickEvent({required this.whiteTimeLeft, required this.blackTimeLeft});
+}
+
+class TimeoutEvent extends GameRoomEvent {
+  final PieceColor timeoutColor; // which player ran out of time
+  TimeoutEvent({required this.timeoutColor});
+}
