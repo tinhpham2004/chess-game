@@ -29,121 +29,134 @@ class _ChessBoardState extends State<ChessBoard> {
         }
 
         return Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Game status info
             _buildGameStatus(context, state),
-            SizedBox(height: AppSpacing.rem300), // Chess board
-            AspectRatio(
-              aspectRatio: 1.0,
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.brown, width: 4),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final squareSize = constraints.maxWidth / 8;
+            SizedBox(height: AppSpacing.rem300), 
+            
+            // Chess board - responsive
+            Flexible(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Calculate the maximum available size for the chess board
+                  final maxSize = constraints.maxWidth < constraints.maxHeight 
+                      ? constraints.maxWidth 
+                      : constraints.maxHeight;
+                  
+                  return Container(
+                    width: maxSize,
+                    height: maxSize,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.brown, width: 4),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: LayoutBuilder(
+                      builder: (context, boardConstraints) {
+                        final squareSize = boardConstraints.maxWidth / 8;
 
-                    return Stack(
-                      children: [
-                        // Chess board grid
-                        GridView.builder(
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 8,
-                          ),
-                          itemCount: 64,
-                          itemBuilder: (context, index) {
-                            final row = index ~/ 8;
-                            final col = index % 8;
+                        return Stack(
+                          children: [
+                            // Chess board grid
+                            GridView.builder(
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 8,
+                              ),
+                              itemCount: 64,
+                              itemBuilder: (context, index) {
+                                final row = index ~/ 8;
+                                final col = index % 8;
 
-                            // Hide piece if it's currently being animated
-                            ChessPiece? piece = state.board.isNotEmpty
-                                ? state.board[row][col]
-                                : null;
-                            if (state.animatingMove != null &&
-                                state.animatingMove!.fromPosition.row == row &&
-                                state.animatingMove!.fromPosition.col == col) {
-                              piece =
-                                  null; // Hide the piece at source position during animation
-                            }
+                                // Hide piece if it's currently being animated
+                                ChessPiece? piece = state.board.isNotEmpty
+                                    ? state.board[row][col]
+                                    : null;
+                                if (state.animatingMove != null &&
+                                    state.animatingMove!.fromPosition.row == row &&
+                                    state.animatingMove!.fromPosition.col == col) {
+                                  piece =
+                                      null; // Hide the piece at source position during animation
+                                }
 
-                            final isSelected =
-                                state.selectedPosition?.row == row &&
-                                    state.selectedPosition?.col == col;
-                            final isHovered = _hoveredPosition?.row == row &&
-                                _hoveredPosition?.col == col;
-                            final isPossibleMove =
-                                state.possibleMoves.isNotEmpty &&
-                                    state.possibleMoves[row][col];
-                            final isDraggedPiece =
-                                _draggedPiecePosition?.row == row &&
-                                    _draggedPiecePosition?.col == col;
-                            final isHintFrom =
-                                state.hintFromPosition?.row == row &&
-                                    state.hintFromPosition?.col == col;
-                            final isHintTo = state.hintToPosition?.row == row &&
-                                state.hintToPosition?.col == col;
+                                final isSelected =
+                                    state.selectedPosition?.row == row &&
+                                        state.selectedPosition?.col == col;
+                                final isHovered = _hoveredPosition?.row == row &&
+                                    _hoveredPosition?.col == col;
+                                final isPossibleMove =
+                                    state.possibleMoves.isNotEmpty &&
+                                        state.possibleMoves[row][col];
+                                final isDraggedPiece =
+                                    _draggedPiecePosition?.row == row &&
+                                        _draggedPiecePosition?.col == col;
+                                final isHintFrom =
+                                    state.hintFromPosition?.row == row &&
+                                        state.hintFromPosition?.col == col;
+                                final isHintTo = state.hintToPosition?.row == row &&
+                                    state.hintToPosition?.col == col;
 
-                            // Check if this square contains a king in check
-                            final isKingInCheck = piece != null &&
-                                piece.type == PieceType.king &&
-                                ((piece.color == PieceColor.white &&
-                                        state.isWhiteKingInCheck) ||
-                                    (piece.color == PieceColor.black &&
-                                        state.isBlackKingInCheck));
+                                // Check if this square contains a king in check
+                                final isKingInCheck = piece != null &&
+                                    piece.type == PieceType.king &&
+                                    ((piece.color == PieceColor.white &&
+                                            state.isWhiteKingInCheck) ||
+                                        (piece.color == PieceColor.black &&
+                                            state.isBlackKingInCheck));
 
-                            // Check if this square contains an attacking piece
-                            final currentPosition = Position(col, row);
-                            final isAttackingPiece = piece != null &&
-                                (state.whiteAttackingPieces
-                                        .contains(currentPosition) ||
-                                    state.blackAttackingPieces
-                                        .contains(currentPosition));
+                                // Check if this square contains an attacking piece
+                                final currentPosition = Position(col, row);
+                                final isAttackingPiece = piece != null &&
+                                    (state.whiteAttackingPieces
+                                            .contains(currentPosition) ||
+                                        state.blackAttackingPieces
+                                            .contains(currentPosition));
 
-                            return ChessSquare(
-                              row: row,
-                              col: col,
-                              piece: piece,
-                              isSelected: isSelected,
-                              isHovered: isHovered,
-                              isPossibleMove: isPossibleMove,
-                              isDraggedPiece: isDraggedPiece,
-                              isHintFrom: isHintFrom,
-                              isHintTo: isHintTo,
-                              isKingInCheck: isKingInCheck,
-                              isAttackingPiece: isAttackingPiece,
-                              onTap: _onSquareTapped,
-                              onPieceDropped: _onPieceDropped,
-                              onHoverEnter: _onHoverEnter,
-                              onHoverExit: _onHoverExit,
-                              onDragStarted: _onDragStarted,
-                              onDragEnd: _onDragEnd,
-                            );
-                          },
-                        ),
+                                return ChessSquare(
+                                  row: row,
+                                  col: col,
+                                  piece: piece,
+                                  isSelected: isSelected,
+                                  isHovered: isHovered,
+                                  isPossibleMove: isPossibleMove,
+                                  isDraggedPiece: isDraggedPiece,
+                                  isHintFrom: isHintFrom,
+                                  isHintTo: isHintTo,
+                                  isKingInCheck: isKingInCheck,
+                                  isAttackingPiece: isAttackingPiece,
+                                  onTap: _onSquareTapped,
+                                  onPieceDropped: _onPieceDropped,
+                                  onHoverEnter: _onHoverEnter,
+                                  onHoverExit: _onHoverExit,
+                                  onDragStarted: _onDragStarted,
+                                  onDragEnd: _onDragEnd,
+                                );
+                              },
+                            ),
 
-                        // Animated piece overlay
-                        if (state.animatingMove != null)
-                          AnimatedPiece(
-                            piece: state.animatingMove!.piece,
-                            fromPosition: state.animatingMove!.fromPosition,
-                            toPosition: state.animatingMove!.toPosition,
-                            squareSize: squareSize,
-                            onAnimationComplete: () {
-                              context.read<GameRoomBloc>().add(
-                                    AnimationCompletedEvent(
-                                      from: state.animatingMove!.fromPosition,
-                                      to: state.animatingMove!.toPosition,
-                                    ),
-                                  );
-                            },
-                          ),
-                      ],
-                    );
-                  },
-                ),
+                            // Animated piece overlay
+                            if (state.animatingMove != null)
+                              AnimatedPiece(
+                                piece: state.animatingMove!.piece,
+                                fromPosition: state.animatingMove!.fromPosition,
+                                toPosition: state.animatingMove!.toPosition,
+                                squareSize: squareSize,
+                                onAnimationComplete: () {
+                                  context.read<GameRoomBloc>().add(
+                                        AnimationCompletedEvent(
+                                          from: state.animatingMove!.fromPosition,
+                                          to: state.animatingMove!.toPosition,
+                                        ),
+                                      );
+                                },
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                  );
+                },
               ),
             ),
           ],
