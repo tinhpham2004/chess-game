@@ -16,6 +16,7 @@ class ChessSquare extends StatelessWidget {
   final bool isHintFrom;
   final bool isHintTo;
   final bool isKingInCheck;
+  final bool isAttackingPiece;
   final Function(int row, int col) onTap;
   final Function(Position from, Position to) onPieceDropped;
   final Function(Position position) onHoverEnter;
@@ -35,6 +36,7 @@ class ChessSquare extends StatelessWidget {
     this.isHintFrom = false,
     this.isHintTo = false,
     this.isKingInCheck = false,
+    this.isAttackingPiece = false,
     required this.onTap,
     required this.onPieceDropped,
     required this.onHoverEnter,
@@ -80,15 +82,17 @@ class ChessSquare extends StatelessWidget {
       decoration: BoxDecoration(
         border: isKingInCheck
             ? Border.all(color: Colors.red, width: 4)
-            : isSelected
-                ? Border.all(color: Colors.amber, width: 4)
-                : isHintFrom
-                    ? Border.all(color: Colors.blue, width: 3)
-                    : isHintTo
-                        ? Border.all(color: Colors.purple, width: 3)
-                        : isHovered && isPossibleMove
-                            ? Border.all(color: Colors.green, width: 2)
-                            : null,
+            : isAttackingPiece
+                ? Border.all(color: Colors.red, width: 3)
+                : isSelected
+                    ? Border.all(color: Colors.amber, width: 4)
+                    : isHintFrom
+                        ? Border.all(color: Colors.blue, width: 3)
+                        : isHintTo
+                            ? Border.all(color: Colors.purple, width: 3)
+                            : isHovered && isPossibleMove
+                                ? Border.all(color: Colors.green, width: 2)
+                                : null,
         boxShadow: isKingInCheck
             ? [
                 BoxShadow(
@@ -97,39 +101,47 @@ class ChessSquare extends StatelessWidget {
                   spreadRadius: 3,
                 ),
               ]
-            : isSelected
+            : isAttackingPiece
                 ? [
                     BoxShadow(
-                      color: Colors.amber.withOpacity(0.5),
-                      blurRadius: 8,
+                      color: Colors.red.withOpacity(0.4),
+                      blurRadius: 6,
                       spreadRadius: 2,
                     ),
                   ]
-                : isHintFrom
+                : isSelected
                     ? [
                         BoxShadow(
-                          color: Colors.blue.withOpacity(0.4),
-                          blurRadius: 6,
-                          spreadRadius: 1,
+                          color: Colors.amber.withOpacity(0.5),
+                          blurRadius: 8,
+                          spreadRadius: 2,
                         ),
                       ]
-                    : isHintTo
+                    : isHintFrom
                         ? [
                             BoxShadow(
-                              color: Colors.purple.withOpacity(0.4),
+                              color: Colors.blue.withOpacity(0.4),
                               blurRadius: 6,
                               spreadRadius: 1,
                             ),
                           ]
-                        : isHovered && isPossibleMove
+                        : isHintTo
                             ? [
                                 BoxShadow(
-                                  color: Colors.green.withOpacity(0.3),
-                                  blurRadius: 4,
+                                  color: Colors.purple.withOpacity(0.4),
+                                  blurRadius: 6,
                                   spreadRadius: 1,
                                 ),
                               ]
-                            : null,
+                            : isHovered && isPossibleMove
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.green.withOpacity(0.3),
+                                      blurRadius: 4,
+                                      spreadRadius: 1,
+                                    ),
+                                  ]
+                                : null,
       ),
       child: SvgPicture.asset(
         _isWhiteSquare ? Assets.icons.squareWhite : Assets.icons.squareBlack,
