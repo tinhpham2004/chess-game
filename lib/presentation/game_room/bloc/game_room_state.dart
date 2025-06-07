@@ -45,6 +45,9 @@ class GameRoomState extends Equatable {
   final Position? hintFromPosition;
   final Position? hintToPosition;
   final bool showingHint;
+  // Check detection
+  final bool isWhiteKingInCheck;
+  final bool isBlackKingInCheck;
 
   const GameRoomState({
     this.gameRoom,
@@ -64,6 +67,8 @@ class GameRoomState extends Equatable {
     this.hintFromPosition,
     this.hintToPosition,
     this.showingHint = false,
+    this.isWhiteKingInCheck = false,
+    this.isBlackKingInCheck = false,
   });
 
   GameRoomState copyWith({
@@ -84,6 +89,8 @@ class GameRoomState extends Equatable {
     Position? hintFromPosition,
     Position? hintToPosition,
     bool? showingHint,
+    bool? isWhiteKingInCheck,
+    bool? isBlackKingInCheck,
     bool clearSelectedPosition = false,
     bool clearAnimatingMove = false,
     bool clearHint = false,
@@ -111,6 +118,8 @@ class GameRoomState extends Equatable {
       hintToPosition:
           clearHint ? null : (hintToPosition ?? this.hintToPosition),
       showingHint: clearHint ? false : (showingHint ?? this.showingHint),
+      isWhiteKingInCheck: isWhiteKingInCheck ?? this.isWhiteKingInCheck,
+      isBlackKingInCheck: isBlackKingInCheck ?? this.isBlackKingInCheck,
     );
   }
 
@@ -133,5 +142,7 @@ class GameRoomState extends Equatable {
         hintFromPosition,
         hintToPosition,
         showingHint,
+        isWhiteKingInCheck,
+        isBlackKingInCheck,
       ];
 }

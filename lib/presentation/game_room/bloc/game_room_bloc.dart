@@ -7,6 +7,7 @@ import 'package:chess_game/core/models/position.dart';
 import 'package:chess_game/core/models/game_room.dart';
 import 'package:chess_game/core/models/game_config.dart';
 import 'package:chess_game/core/patterns/strategy/ai_strategy.dart';
+import 'package:chess_game/core/patterns/chain_of_responsibility/move_validator.dart';
 import 'package:chess_game/presentation/game_room/command/move_command.dart';
 import 'package:chess_game/presentation/game_room/command/game_room_command_manager.dart';
 import 'package:chess_game/presentation/game_room/memento/chess_board_manager.dart';
@@ -202,6 +203,8 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
         moveHistory: [],
         errorMessage: null,
         clearHint: true,
+        isWhiteKingInCheck: false,
+        isBlackKingInCheck: false,
       ));
 
       // If white is AI, make the first move
@@ -226,13 +229,31 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     // Don't allow player to move AI pieces
     if (state.aiColor != null && piece.color == state.aiColor) return;
 
-    // Calculate possible moves
+    // Check if user is selecting the same piece that's hinted
+    final isSelectingHintedPiece = state.showingHint &&
+        state.hintFromPosition != null &&
+        state.hintFromPosition == event.position;
+
+    // Calculate possible moves for the selected piece
     final possibleMoves = _getPossibleMoves(piece);
 
-    emit(state.copyWith(
-      selectedPosition: event.position,
-      possibleMoves: possibleMoves,
-    ));
+    // If selecting the hinted piece, keep the hint visualization but show the piece's actual moves
+    // If selecting a different piece, clear the hint completely
+    if (isSelectingHintedPiece) {
+      // User selected the hinted piece - show both hint and possible moves
+      emit(state.copyWith(
+        selectedPosition: event.position,
+        possibleMoves: possibleMoves,
+        // Keep the hint visible since user selected the hinted piece
+      ));
+    } else {
+      // User selected a different piece - clear hint and show new piece's moves
+      emit(state.copyWith(
+        selectedPosition: event.position,
+        possibleMoves: possibleMoves,
+        clearHint: true, // Clear hint when selecting a different piece
+      ));
+    }
   }
 
   void _onMovePiece(MovePieceEvent event, Emitter<GameRoomState> emit) {
@@ -299,6 +320,9 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
       winner = _determineWinner(newBoard, !state.isWhitesTurn);
     }
 
+    // Check if either king is in check after the move
+    final checkStatus = _getCheckStatus();
+
     emit(state.copyWith(
       board: newBoard,
       isWhitesTurn: !state.isWhitesTurn,
@@ -308,6 +332,9 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
       gameEnded: isGameOver,
       winner: winner,
       clearAnimatingMove: true,
+      clearHint: true, // Clear hint after any move
+      isWhiteKingInCheck: checkStatus.$1,
+      isBlackKingInCheck: checkStatus.$2,
     ));
 
     // If game ended, save match history
@@ -410,6 +437,9 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
           winner = _determineWinner(newBoard, !state.isWhitesTurn);
         }
 
+        // Check if either king is in check after the AI move
+        final checkStatus = _getCheckStatus();
+
         emit(state.copyWith(
           board: newBoard,
           isWhitesTurn: !state.isWhitesTurn,
@@ -419,6 +449,8 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
           gameEnded: isGameOver,
           winner: winner,
           clearHint: true, // Clear any active hints when AI moves
+          isWhiteKingInCheck: checkStatus.$1,
+          isBlackKingInCheck: checkStatus.$2,
         ));
 
         // If game ended, save match history
@@ -438,6 +470,7 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     emit(state.copyWith(
       clearSelectedPosition: true,
       possibleMoves: _createEmptyMovesMatrix(),
+      clearHint: true, // Clear any active hint when deselecting a piece
     ));
   }
   // Command pattern helper methods
@@ -517,6 +550,7 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
           isWhitesTurn: !state.isWhitesTurn,
           possibleMoves: _createEmptyMovesMatrix(),
           clearSelectedPosition: true,
+          clearHint: true, // Clear hint after castling move
         ));
         return true;
       }
@@ -545,6 +579,7 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
         isWhitesTurn: !state.isWhitesTurn,
         possibleMoves: _createEmptyMovesMatrix(),
         clearSelectedPosition: true,
+        clearHint: true, // Clear hint after promotion move
       ));
       return true;
     }
@@ -647,15 +682,28 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
       final currentPlayerColor =
           state.isWhitesTurn ? PieceColor.white : PieceColor.black;
 
-      // Use AI player to get hint, or create a temporary one if not available
-      final hintProvider = _aiPlayer ?? ChessAIPlayer(MinimaxAIStrategy(2));
+      // Check if the current player's king is in check
+      final isPlayerInCheck = (currentPlayerColor == PieceColor.white &&
+              state.isWhiteKingInCheck) ||
+          (currentPlayerColor == PieceColor.black && state.isBlackKingInCheck);
+
+      // Use a higher depth strategy when in check to find defensive moves
+      final hintStrategy = isPlayerInCheck
+          ? AdvancedMinimaxAIStrategy(3) // Deeper search when in check
+          : AdvancedMinimaxAIStrategy(2); // Standard depth for normal play
+
+      final hintProvider = ChessAIPlayer(hintStrategy);
       final hintMove = hintProvider.getHintMove(allPieces, currentPlayerColor);
 
       if (hintMove != null) {
+        // Clear any current selection and show hint
         emit(state.copyWith(
           hintFromPosition: hintMove.from,
           hintToPosition: hintMove.to,
           showingHint: true,
+          clearSelectedPosition: true, // Clear any current piece selection
+          possibleMoves:
+              _createEmptyMovesMatrix(), // Clear current possible moves
         ));
       }
     } catch (e) {
@@ -664,7 +712,11 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
   }
 
   void _onDismissHint(DismissHintEvent event, Emitter<GameRoomState> emit) {
-    emit(state.copyWith(clearHint: true));
+    emit(state.copyWith(
+      clearHint: true,
+      clearSelectedPosition: true, // Also clear any piece selection
+      possibleMoves: _createEmptyMovesMatrix(), // Clear possible moves
+    ));
   }
 
   void _onChangeAIDifficulty(
@@ -701,16 +753,33 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     // Get all pieces from the board manager
     final allPieces = _boardManager.getAllPieces();
 
-    // Use the piece's own getPossibleMoves method which implements correct chess rules
-    final possiblePositions = piece.getPossibleMoves(allPieces);
+    // Use the move validator to get valid moves that consider the current chess match state
+    // This includes checks, pins, castling restrictions, and other chess rules
+    if (_currentGameRoom?.moveValidator != null) {
+      final validator = _currentGameRoom!.moveValidator;
 
-    // Mark the possible moves in the matrix
-    for (final position in possiblePositions) {
-      if (position.row >= 0 &&
-          position.row < 8 &&
-          position.col >= 0 &&
-          position.col < 8) {
-        moves[position.row][position.col] = true;
+      // Check all possible positions on the board
+      for (int row = 0; row < 8; row++) {
+        for (int col = 0; col < 8; col++) {
+          final targetPosition = Position(col, row);
+
+          // Validate the move using the complete validation chain
+          if (validator.validate(
+              piece, piece.position, targetPosition, allPieces)) {
+            moves[row][col] = true;
+          }
+        }
+      }
+    } else {
+      // Fallback to basic piece moves if validator is not available
+      final possiblePositions = piece.getPossibleMoves(allPieces);
+      for (final position in possiblePositions) {
+        if (position.row >= 0 &&
+            position.row < 8 &&
+            position.col >= 0 &&
+            position.col < 8) {
+          moves[position.row][position.col] = true;
+        }
       }
     }
 
@@ -774,5 +843,17 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     if (!whiteKingExists) return 'black';
     if (!blackKingExists) return 'white';
     return 'draw';
+  }
+
+  /// Check if a king is in check on the current board
+  bool _isKingInCheck(PieceColor kingColor) {
+    final allPieces = _boardManager.getAllPieces();
+    final kingSafetyValidator = KingSafetyValidator();
+    return kingSafetyValidator.isKingInCheck(kingColor, allPieces);
+  }
+
+  /// Update check status for both kings
+  (bool whiteInCheck, bool blackInCheck) _getCheckStatus() {
+    return (_isKingInCheck(PieceColor.white), _isKingInCheck(PieceColor.black));
   }
 }

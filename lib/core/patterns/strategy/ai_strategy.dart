@@ -405,17 +405,49 @@ class AdvancedMinimaxAIStrategy extends BaseAIStrategy {
 
   double _evaluateKingSafety(List<ChessPiece> pieces, PieceColor aiColor) {
     double score = 0.0;
+    final kingSafetyValidator = KingSafetyValidator();
+
+    // Check if our king is in check (major penalty)
+    if (kingSafetyValidator.isKingInCheck(aiColor, pieces)) {
+      score -= 50.0; // Huge penalty for being in check
+    }
+
+    // Check if opponent's king is in check (major bonus)
+    final opponentColor =
+        aiColor == PieceColor.white ? PieceColor.black : PieceColor.white;
+    if (kingSafetyValidator.isKingInCheck(opponentColor, pieces)) {
+      score += 50.0; // Big bonus for putting opponent in check
+    }
 
     final aiKing = pieces
         .where((p) => p.type == PieceType.king && p.color == aiColor)
         .firstOrNull;
 
     if (aiKing != null) {
-      // Penalty for exposed king
-      final attackers = pieces.where((p) => p.color != aiColor).length;
-      if (attackers > 0) {
-        score -= 0.5;
+      // Penalty for king in center during opening/middle game
+      if (aiKing.position.col >= 2 &&
+          aiKing.position.col <= 5 &&
+          aiKing.position.row >= 2 &&
+          aiKing.position.row <= 5) {
+        score -= 2.0;
       }
+
+      // Count how many enemy pieces can attack the king's vicinity
+      final enemyPieces = pieces.where((p) => p.color != aiColor);
+      int threatsNearKing = 0;
+
+      for (final enemy in enemyPieces) {
+        final attackMoves = enemy.getPossibleMoves(pieces);
+        for (final move in attackMoves) {
+          final distance = (move.row - aiKing.position.row).abs() +
+              (move.col - aiKing.position.col).abs();
+          if (distance <= 2) {
+            threatsNearKing++;
+          }
+        }
+      }
+
+      score -= threatsNearKing * 0.3; // Penalty for threats near king
     }
 
     return score;
