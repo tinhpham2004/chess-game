@@ -421,10 +421,11 @@ class KingSafetyValidator extends MoveValidator {
     pieceToMove.position = to;
 
     // Check if king is safe
-    return !_isKingInCheck(piece.color, simulatedPieces);
+    return !isKingInCheck(piece.color, simulatedPieces);
   }
 
-  bool _isKingInCheck(PieceColor kingColor, List<ChessPiece> pieces) {
+  /// Public method to check if a king is in check
+  bool isKingInCheck(PieceColor kingColor, List<ChessPiece> pieces) {
     final king = pieces
         .where((p) => p.type == PieceType.king && p.color == kingColor)
         .firstOrNull;

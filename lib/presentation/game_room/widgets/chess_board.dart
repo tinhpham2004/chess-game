@@ -86,6 +86,14 @@ class _ChessBoardState extends State<ChessBoard> {
                             final isHintTo = state.hintToPosition?.row == row &&
                                 state.hintToPosition?.col == col;
 
+                            // Check if this square contains a king in check
+                            final isKingInCheck = piece != null &&
+                                piece.type == PieceType.king &&
+                                ((piece.color == PieceColor.white &&
+                                        state.isWhiteKingInCheck) ||
+                                    (piece.color == PieceColor.black &&
+                                        state.isBlackKingInCheck));
+
                             return ChessSquare(
                               row: row,
                               col: col,
@@ -96,6 +104,7 @@ class _ChessBoardState extends State<ChessBoard> {
                               isDraggedPiece: isDraggedPiece,
                               isHintFrom: isHintFrom,
                               isHintTo: isHintTo,
+                              isKingInCheck: isKingInCheck,
                               onTap: _onSquareTapped,
                               onPieceDropped: _onPieceDropped,
                               onHoverEnter: _onHoverEnter,
