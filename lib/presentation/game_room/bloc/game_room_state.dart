@@ -48,6 +48,9 @@ class GameRoomState extends Equatable {
   // Check detection
   final bool isWhiteKingInCheck;
   final bool isBlackKingInCheck;
+  // Attacking pieces positions
+  final List<Position> whiteAttackingPieces;
+  final List<Position> blackAttackingPieces;
 
   const GameRoomState({
     this.gameRoom,
@@ -69,6 +72,8 @@ class GameRoomState extends Equatable {
     this.showingHint = false,
     this.isWhiteKingInCheck = false,
     this.isBlackKingInCheck = false,
+    this.whiteAttackingPieces = const [],
+    this.blackAttackingPieces = const [],
   });
 
   GameRoomState copyWith({
@@ -91,6 +96,8 @@ class GameRoomState extends Equatable {
     bool? showingHint,
     bool? isWhiteKingInCheck,
     bool? isBlackKingInCheck,
+    List<Position>? whiteAttackingPieces,
+    List<Position>? blackAttackingPieces,
     bool clearSelectedPosition = false,
     bool clearAnimatingMove = false,
     bool clearHint = false,
@@ -120,6 +127,8 @@ class GameRoomState extends Equatable {
       showingHint: clearHint ? false : (showingHint ?? this.showingHint),
       isWhiteKingInCheck: isWhiteKingInCheck ?? this.isWhiteKingInCheck,
       isBlackKingInCheck: isBlackKingInCheck ?? this.isBlackKingInCheck,
+      whiteAttackingPieces: whiteAttackingPieces ?? this.whiteAttackingPieces,
+      blackAttackingPieces: blackAttackingPieces ?? this.blackAttackingPieces,
     );
   }
 
@@ -144,5 +153,7 @@ class GameRoomState extends Equatable {
         showingHint,
         isWhiteKingInCheck,
         isBlackKingInCheck,
+        whiteAttackingPieces,
+        blackAttackingPieces,
       ];
 }

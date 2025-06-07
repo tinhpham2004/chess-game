@@ -94,6 +94,14 @@ class _ChessBoardState extends State<ChessBoard> {
                                     (piece.color == PieceColor.black &&
                                         state.isBlackKingInCheck));
 
+                            // Check if this square contains an attacking piece
+                            final currentPosition = Position(col, row);
+                            final isAttackingPiece = piece != null &&
+                                (state.whiteAttackingPieces
+                                        .contains(currentPosition) ||
+                                    state.blackAttackingPieces
+                                        .contains(currentPosition));
+
                             return ChessSquare(
                               row: row,
                               col: col,
@@ -105,6 +113,7 @@ class _ChessBoardState extends State<ChessBoard> {
                               isHintFrom: isHintFrom,
                               isHintTo: isHintTo,
                               isKingInCheck: isKingInCheck,
+                              isAttackingPiece: isAttackingPiece,
                               onTap: _onSquareTapped,
                               onPieceDropped: _onPieceDropped,
                               onHoverEnter: _onHoverEnter,

@@ -444,6 +444,28 @@ class KingSafetyValidator extends MoveValidator {
     return false;
   }
 
+  /// Get all pieces that are attacking the king
+  List<Position> getAttackingPiecesPositions(
+      PieceColor kingColor, List<ChessPiece> pieces) {
+    final king = pieces
+        .where((p) => p.type == PieceType.king && p.color == kingColor)
+        .firstOrNull;
+
+    if (king == null) return []; // No king = no attackers
+
+    final attackingPositions = <Position>[];
+    final opponentPieces = pieces.where((p) => p.color != kingColor);
+
+    for (final opponent in opponentPieces) {
+      if (_canPieceAttackPosition(
+          opponent, opponent.position, king.position, pieces)) {
+        attackingPositions.add(opponent.position);
+      }
+    }
+
+    return attackingPositions;
+  }
+
   bool _canPieceAttackPosition(ChessPiece piece, Position from, Position to,
       List<ChessPiece> allPieces) {
     switch (piece.type) {

@@ -234,7 +234,8 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
         state.hintFromPosition != null &&
         state.hintFromPosition == event.position;
 
-    // Calculate possible moves for the selected piece
+    // Calculate possible moves for the selected piece using move validator
+    // This ensures only truly legal moves are shown based on current game state
     final possibleMoves = _getPossibleMoves(piece);
 
     // If selecting the hinted piece, keep the hint visualization but show the piece's actual moves
@@ -335,6 +336,8 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
       clearHint: true, // Clear hint after any move
       isWhiteKingInCheck: checkStatus.$1,
       isBlackKingInCheck: checkStatus.$2,
+      whiteAttackingPieces: checkStatus.$3,
+      blackAttackingPieces: checkStatus.$4,
     ));
 
     // If game ended, save match history
@@ -451,6 +454,8 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
           clearHint: true, // Clear any active hints when AI moves
           isWhiteKingInCheck: checkStatus.$1,
           isBlackKingInCheck: checkStatus.$2,
+          whiteAttackingPieces: checkStatus.$3,
+          blackAttackingPieces: checkStatus.$4,
         ));
 
         // If game ended, save match history
@@ -687,27 +692,283 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
               state.isWhiteKingInCheck) ||
           (currentPlayerColor == PieceColor.black && state.isBlackKingInCheck);
 
-      // Use a higher depth strategy when in check to find defensive moves
-      final hintStrategy = isPlayerInCheck
-          ? AdvancedMinimaxAIStrategy(3) // Deeper search when in check
-          : AdvancedMinimaxAIStrategy(2); // Standard depth for normal play
+      // Step 1: Use AI strategy to get suggested moves
+      AIStrategy hintStrategy;
+      if (isPlayerInCheck) {
+        // Use deeper search when in check to find defensive moves
+        hintStrategy = AdvancedMinimaxAIStrategy(3);
+      } else {
+        // Use standard depth for normal play
+        hintStrategy = AdvancedMinimaxAIStrategy(2);
+      }
 
       final hintProvider = ChessAIPlayer(hintStrategy);
-      final hintMove = hintProvider.getHintMove(allPieces, currentPlayerColor);
 
-      if (hintMove != null) {
+      // Get top AI suggested moves (not just one)
+      final aiSuggestedMoves =
+          hintProvider.getTopMoves(allPieces, currentPlayerColor, 5);
+
+      // Step 2: Use move validator to ensure all suggested moves are truly legal
+      final validator = _currentGameRoom?.moveValidator ??
+          MoveValidatorChain.createCompleteChain();
+
+      final validAIMoves = <Map<String, dynamic>>[];
+
+      for (final aiMove in aiSuggestedMoves) {
+        final piece = _getPieceAt(aiMove.from);
+        if (piece != null &&
+            validator.validate(piece, aiMove.from, aiMove.to, allPieces)) {
+          validAIMoves.add({
+            'piece': piece,
+            'from': aiMove.from,
+            'to': aiMove.to,
+            'aiScore': aiMove.score.round(), // AI evaluation score
+            'priority': _calculateMovePriority(
+                piece, aiMove.from, aiMove.to, allPieces),
+          });
+        }
+      }
+
+      // Step 3: If AI didn't provide enough moves, find additional valid moves
+      if (validAIMoves.length < 3) {
+        final playerPieces = allPieces
+            .where((piece) => piece.color == currentPlayerColor)
+            .toList();
+
+        for (final piece in playerPieces) {
+          for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+              final targetPosition = Position(col, row);
+
+              // Skip if it's the same position as the piece
+              if (targetPosition == piece.position) continue;
+
+              // Skip if this move is already in AI suggestions
+              if (validAIMoves.any((m) =>
+                  m['from'] == piece.position && m['to'] == targetPosition)) {
+                continue;
+              }
+
+              // Use validator to check if move is truly legal
+              if (validator.validate(
+                  piece, piece.position, targetPosition, allPieces)) {
+                validAIMoves.add({
+                  'piece': piece,
+                  'from': piece.position,
+                  'to': targetPosition,
+                  'aiScore': 0, // No AI evaluation for these moves
+                  'priority': _calculateMovePriority(
+                      piece, piece.position, targetPosition, allPieces),
+                });
+              }
+            }
+          }
+        }
+      }
+
+      if (validAIMoves.isNotEmpty) {
+        // Step 4: Combine AI score and priority for final ranking
+        for (final move in validAIMoves) {
+          final aiScore = move['aiScore'] as int;
+          final priority = move['priority'] as int;
+
+          // Weighted combination: AI score has higher weight, but priority is also important
+          move['finalScore'] = (aiScore * 0.7 + priority * 0.3).round();
+        }
+
+        // Sort moves by final score (higher is better)
+        validAIMoves.sort((a, b) =>
+            (b['finalScore'] as int).compareTo(a['finalScore'] as int));
+
+        // Select the best move as hint
+        final bestMove = validAIMoves.first;
+        final from = bestMove['from'] as Position;
+        final to = bestMove['to'] as Position;
+
         // Clear any current selection and show hint
         emit(state.copyWith(
-          hintFromPosition: hintMove.from,
-          hintToPosition: hintMove.to,
+          hintFromPosition: from,
+          hintToPosition: to,
           showingHint: true,
           clearSelectedPosition: true, // Clear any current piece selection
           possibleMoves:
               _createEmptyMovesMatrix(), // Clear current possible moves
         ));
+      } else {
+        // No valid moves found (shouldn't happen in normal play)
+        emit(state.copyWith(errorMessage: 'No valid moves available for hint'));
       }
     } catch (e) {
       emit(state.copyWith(errorMessage: 'Failed to get hint: ${e.toString()}'));
+    }
+  }
+
+  /// Calculate move priority for hint suggestions
+  /// Higher values indicate better moves
+  int _calculateMovePriority(ChessPiece piece, Position from, Position to,
+      List<ChessPiece> allPieces) {
+    int priority = 0;
+
+    // Check if move captures an opponent piece
+    final capturedPiece = allPieces.where((p) => p.position == to).firstOrNull;
+    if (capturedPiece != null && capturedPiece.color != piece.color) {
+      // Prioritize captures based on piece value
+      switch (capturedPiece.type) {
+        case PieceType.queen:
+          priority += 900;
+          break;
+        case PieceType.rook:
+          priority += 500;
+          break;
+        case PieceType.bishop:
+        case PieceType.knight:
+          priority += 300;
+          break;
+        case PieceType.pawn:
+          priority += 100;
+          break;
+        case PieceType.king:
+          priority += 10000; // Should never happen, but highest priority
+          break;
+      }
+    }
+
+    // Prioritize moves that get pieces out of danger
+    // Check if the piece is currently under attack
+    final isCurrentlyUnderAttack =
+        _isPositionUnderAttack(from, piece.color, allPieces);
+    if (isCurrentlyUnderAttack) {
+      priority += 200; // Bonus for moving a piece that's under attack
+    }
+
+    // Prioritize central positions
+    final centerDistance = (3.5 - to.col).abs() + (3.5 - to.row).abs();
+    priority += (14 - centerDistance * 2)
+        .round(); // Closer to center gets higher priority
+
+    // Small bonus for developing pieces (moving from starting positions)
+    if (_isPieceInStartingPosition(piece, from)) {
+      priority += 50;
+    }
+
+    return priority;
+  }
+
+  /// Check if a position is under attack by opponent pieces
+  bool _isPositionUnderAttack(Position position, PieceColor defendingColor,
+      List<ChessPiece> allPieces) {
+    final opponentPieces = allPieces.where((p) => p.color != defendingColor);
+
+    for (final opponent in opponentPieces) {
+      // Use simple attack pattern check (without full validation to avoid recursion)
+      if (_canPieceAttackPosition(
+          opponent, opponent.position, position, allPieces)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Simple check if a piece can attack a position (used for hint calculation)
+  bool _canPieceAttackPosition(ChessPiece piece, Position from, Position to,
+      List<ChessPiece> allPieces) {
+    switch (piece.type) {
+      case PieceType.pawn:
+        final direction = piece.color == PieceColor.white ? -1 : 1;
+        final deltaRow = to.row - from.row;
+        final deltaCol = (to.col - from.col).abs();
+        return deltaRow == direction && deltaCol == 1;
+      case PieceType.rook:
+        if (from.row != to.row && from.col != to.col) return false;
+        return _isPathClearForHint(from, to, allPieces);
+      case PieceType.knight:
+        final deltaRow = (to.row - from.row).abs();
+        final deltaCol = (to.col - from.col).abs();
+        return (deltaRow == 2 && deltaCol == 1) ||
+            (deltaRow == 1 && deltaCol == 2);
+      case PieceType.bishop:
+        final deltaRow = (to.row - from.row).abs();
+        final deltaCol = (to.col - from.col).abs();
+        if (deltaRow != deltaCol) return false;
+        return _isPathClearForHint(from, to, allPieces);
+      case PieceType.queen:
+        final deltaRow = (to.row - from.row).abs();
+        final deltaCol = (to.col - from.col).abs();
+        if (from.row == to.row || from.col == to.col || deltaRow == deltaCol) {
+          return _isPathClearForHint(from, to, allPieces);
+        }
+        return false;
+      case PieceType.king:
+        final deltaRow = (to.row - from.row).abs();
+        final deltaCol = (to.col - from.col).abs();
+        return deltaRow <= 1 && deltaCol <= 1;
+    }
+  }
+
+  /// Simple path clear check for hint calculation
+  bool _isPathClearForHint(
+      Position from, Position to, List<ChessPiece> allPieces) {
+    final deltaRow = to.row - from.row;
+    final deltaCol = to.col - from.col;
+    final steps =
+        deltaRow.abs() > deltaCol.abs() ? deltaRow.abs() : deltaCol.abs();
+
+    if (steps <= 1) return true;
+
+    final rowStep = deltaRow != 0 ? deltaRow ~/ deltaRow.abs() : 0;
+    final colStep = deltaCol != 0 ? deltaCol ~/ deltaCol.abs() : 0;
+
+    for (int i = 1; i < steps; i++) {
+      final checkPos =
+          Position(from.col + (colStep * i), from.row + (rowStep * i));
+      if (allPieces.any((p) => p.position == checkPos)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// Check if a piece is in its starting position
+  bool _isPieceInStartingPosition(ChessPiece piece, Position position) {
+    switch (piece.type) {
+      case PieceType.pawn:
+        return (piece.color == PieceColor.white && position.row == 6) ||
+            (piece.color == PieceColor.black && position.row == 1);
+      case PieceType.rook:
+        return (piece.color == PieceColor.white &&
+                position.row == 7 &&
+                (position.col == 0 || position.col == 7)) ||
+            (piece.color == PieceColor.black &&
+                position.row == 0 &&
+                (position.col == 0 || position.col == 7));
+      case PieceType.knight:
+        return (piece.color == PieceColor.white &&
+                position.row == 7 &&
+                (position.col == 1 || position.col == 6)) ||
+            (piece.color == PieceColor.black &&
+                position.row == 0 &&
+                (position.col == 1 || position.col == 6));
+      case PieceType.bishop:
+        return (piece.color == PieceColor.white &&
+                position.row == 7 &&
+                (position.col == 2 || position.col == 5)) ||
+            (piece.color == PieceColor.black &&
+                position.row == 0 &&
+                (position.col == 2 || position.col == 5));
+      case PieceType.queen:
+        return (piece.color == PieceColor.white &&
+                position.row == 7 &&
+                position.col == 3) ||
+            (piece.color == PieceColor.black &&
+                position.row == 0 &&
+                position.col == 3);
+      case PieceType.king:
+        return (piece.color == PieceColor.white &&
+                position.row == 7 &&
+                position.col == 4) ||
+            (piece.color == PieceColor.black &&
+                position.row == 0 &&
+                position.col == 4);
     }
   }
 
@@ -753,17 +1014,21 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     // Get all pieces from the board manager
     final allPieces = _boardManager.getAllPieces();
 
-    // Use the move validator to get valid moves that consider the current chess match state
+    // Always use the move validator to get valid moves that consider the current chess match state
     // This includes checks, pins, castling restrictions, and other chess rules
     if (_currentGameRoom?.moveValidator != null) {
       final validator = _currentGameRoom!.moveValidator;
 
-      // Check all possible positions on the board
+      // Check all possible positions on the board using the complete validation chain
       for (int row = 0; row < 8; row++) {
         for (int col = 0; col < 8; col++) {
           final targetPosition = Position(col, row);
 
+          // Skip if it's the same position as the piece
+          if (targetPosition == piece.position) continue;
+
           // Validate the move using the complete validation chain
+          // This ensures we only show moves that are truly legal in the current game state
           if (validator.validate(
               piece, piece.position, targetPosition, allPieces)) {
             moves[row][col] = true;
@@ -771,14 +1036,22 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
         }
       }
     } else {
-      // Fallback to basic piece moves if validator is not available
-      final possiblePositions = piece.getPossibleMoves(allPieces);
-      for (final position in possiblePositions) {
-        if (position.row >= 0 &&
-            position.row < 8 &&
-            position.col >= 0 &&
-            position.col < 8) {
-          moves[position.row][position.col] = true;
+      // Create a fallback validator if gameRoom validator is not available
+      // This ensures we always validate moves properly even in edge cases
+      final fallbackValidator = MoveValidatorChain.createCompleteChain();
+
+      for (int row = 0; row < 8; row++) {
+        for (int col = 0; col < 8; col++) {
+          final targetPosition = Position(col, row);
+
+          // Skip if it's the same position as the piece
+          if (targetPosition == piece.position) continue;
+
+          // Use fallback validator with complete validation chain
+          if (fallbackValidator.validate(
+              piece, piece.position, targetPosition, allPieces)) {
+            moves[row][col] = true;
+          }
         }
       }
     }
@@ -787,12 +1060,18 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
   }
 
   bool _isValidMove(ChessPiece piece, Position from, Position to) {
-    // if (to.row < 0 || to.row >= 8 || to.col < 0 || to.col >= 8) return false;
-    // return state.possibleMoves[to.row][to.col];
+    // Get all pieces from the board manager
     final allPieces = _boardManager.getAllPieces();
-    return _currentGameRoom?.moveValidator
-            .validate(piece, from, to, allPieces) ??
-        false;
+
+    // Use the move validator for proper validation that considers all chess rules
+    if (_currentGameRoom?.moveValidator != null) {
+      return _currentGameRoom!.moveValidator
+          .validate(piece, from, to, allPieces);
+    } else {
+      // Create a fallback validator if gameRoom validator is not available
+      final fallbackValidator = MoveValidatorChain.createCompleteChain();
+      return fallbackValidator.validate(piece, from, to, allPieces);
+    }
   }
 
   List<List<ChessPiece?>> _executeMove(Position from, Position to) {
@@ -845,15 +1124,30 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     return 'draw';
   }
 
-  /// Check if a king is in check on the current board
-  bool _isKingInCheck(PieceColor kingColor) {
+  /// Update check status for both kings and get attacking pieces
+  (
+    bool whiteInCheck,
+    bool blackInCheck,
+    List<Position> whiteAttackers,
+    List<Position> blackAttackers
+  ) _getCheckStatus() {
     final allPieces = _boardManager.getAllPieces();
     final kingSafetyValidator = KingSafetyValidator();
-    return kingSafetyValidator.isKingInCheck(kingColor, allPieces);
-  }
 
-  /// Update check status for both kings
-  (bool whiteInCheck, bool blackInCheck) _getCheckStatus() {
-    return (_isKingInCheck(PieceColor.white), _isKingInCheck(PieceColor.black));
+    final whiteInCheck =
+        kingSafetyValidator.isKingInCheck(PieceColor.white, allPieces);
+    final blackInCheck =
+        kingSafetyValidator.isKingInCheck(PieceColor.black, allPieces);
+
+    final whiteAttackers = whiteInCheck
+        ? kingSafetyValidator.getAttackingPiecesPositions(
+            PieceColor.white, allPieces)
+        : <Position>[];
+    final blackAttackers = blackInCheck
+        ? kingSafetyValidator.getAttackingPiecesPositions(
+            PieceColor.black, allPieces)
+        : <Position>[];
+
+    return (whiteInCheck, blackInCheck, whiteAttackers, blackAttackers);
   }
 }
