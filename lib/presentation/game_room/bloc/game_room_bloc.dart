@@ -448,9 +448,9 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
       add(CheckGameEndConditionsEvent());
 
       // Check if it's AI's turn to move
-      final nextPlayerColor =
-          state.isWhitesTurn ? PieceColor.black : PieceColor.white;
-      if (state.aiColor == nextPlayerColor) {
+      final currentPlayerColor =
+          state.isWhitesTurn ? PieceColor.white : PieceColor.black;
+      if (state.aiColor == currentPlayerColor) {
         add(MakeAIMoveEvent());
       }
     }
