@@ -124,11 +124,19 @@ class PieceMovementValidator extends MoveValidator {
         return pieceInMiddle == null;
       }
     }
-    // Diagonal capture
-    else if (deltaCol == 1 &&
-        deltaRow == direction &&
-        pieceAtDestination != null) {
-      return pieceAtDestination.color != piece.color;
+    // Diagonal capture OR en passant
+    else if (deltaCol == 1 && deltaRow == direction) {
+      // Regular diagonal capture
+      if (pieceAtDestination != null) {
+        return pieceAtDestination.color != piece.color;
+      }
+
+      // Potential en passant capture (no piece at destination)
+      // This will be validated more strictly by EnPassantValidator
+      final captureRow = piece.color == PieceColor.white ? 3 : 4;
+      if (from.row == captureRow) {
+        return true; // Allow for further validation by EnPassantValidator
+      }
     }
 
     return false;
@@ -171,7 +179,17 @@ class PieceMovementValidator extends MoveValidator {
     final deltaCol = (to.col - from.col).abs();
 
     // Standard king move: one square in any direction
-    return deltaRow <= 1 && deltaCol <= 1;
+    if (deltaRow <= 1 && deltaCol <= 1) return true;
+
+    // Potential castling move: king moves 2 squares horizontally
+    if (deltaRow == 0 && deltaCol == 2) {
+      // Allow castling moves here, detailed validation happens in CastlingValidator
+      print(
+          'PieceMovementValidator: Allowing potential castling move ${from.toString()} -> ${to.toString()}');
+      return true;
+    }
+
+    return false;
   }
 
   bool _isPathClear(Position from, Position to, List<ChessPiece> allPieces) {
@@ -212,20 +230,35 @@ class CastlingValidator extends MoveValidator {
     // Check if this is a castling attempt (king moves 2 squares horizontally)
     if (deltaRow != 0 || deltaCol.abs() != 2) return true;
 
+    print(
+        'CastlingValidator: Processing castling move ${from.toString()} -> ${to.toString()}');
+
     // Verify king hasn't moved
-    if (piece is! King || piece.hasMoved) return false;
+    if (piece is! King || piece.hasMoved) {
+      print('CastlingValidator: King has already moved, castling not allowed');
+      return false;
+    }
 
     // Verify king is on starting position
     final expectedRow = piece.color == PieceColor.white ? 7 : 0;
-    if (from.row != expectedRow || from.col != 4) return false;
+    if (from.row != expectedRow || from.col != 4) {
+      print('CastlingValidator: King not on starting position');
+      return false;
+    }
 
     // Determine castling side
     final isKingSide = deltaCol > 0;
     final rookCol = isKingSide ? 7 : 0;
     final expectedDestCol = isKingSide ? 6 : 2;
 
+    print(
+        'CastlingValidator: ${isKingSide ? "King-side" : "Queen-side"} castling attempt');
+
     // Verify correct destination
-    if (to.col != expectedDestCol) return false;
+    if (to.col != expectedDestCol) {
+      print('CastlingValidator: Incorrect destination column');
+      return false;
+    }
 
     // Find the rook
     final rook = allPieces
@@ -235,33 +268,47 @@ class CastlingValidator extends MoveValidator {
             p.position == Position(rookCol, from.row))
         .firstOrNull;
 
-    if (rook == null || (rook is Rook && rook.hasMoved)) return false;
+    if (rook == null) {
+      print('CastlingValidator: Rook not found at expected position');
+      return false;
+    }
 
-    // Check if path between king and rook is clear
-    final startCol = from.col.clamp(0, rookCol);
-    final endCol = from.col.clamp(rookCol, 7);
+    if (rook is Rook && rook.hasMoved) {
+      print('CastlingValidator: Rook has already moved');
+      return false;
+    } // Check if path between king and rook is clear
+    final squaresToCheck = <int>[];
+    if (isKingSide) {
+      // King-side: check f1 (col 5) and g1 (col 6)
+      squaresToCheck.addAll([5, 6]);
+    } else {
+      // Queen-side: check b1 (col 1), c1 (col 2), and d1 (col 3)
+      squaresToCheck.addAll([1, 2, 3]);
+    }
 
-    for (int col = startCol + 1; col < endCol; col++) {
-      if (col == from.col) continue; // Skip king's position
+    print('CastlingValidator: Checking if squares $squaresToCheck are clear');
+    for (final col in squaresToCheck) {
       final checkPos = Position(col, from.row);
       if (allPieces.any((p) => p.position == checkPos)) {
+        print('CastlingValidator: Square ${checkPos.toString()} is occupied');
         return false;
       }
-    }
-
-    // Check if king passes through or lands on attacked square
+    } // Check if king passes through or lands on attacked square
     final kingPath = <Position>[
-      from,
-      Position(from.col + (isKingSide ? 1 : -1), from.row),
-      to,
+      from, // Starting position
+      Position(from.col + (isKingSide ? 1 : -1), from.row), // Middle square
+      to, // Destination
     ];
 
+    print('CastlingValidator: Checking if king path $kingPath is safe');
     for (final pos in kingPath) {
       if (_isPositionUnderAttack(pos, piece.color, allPieces)) {
+        print('CastlingValidator: Position ${pos.toString()} is under attack');
         return false;
       }
     }
 
+    print('CastlingValidator: Castling is legal');
     return true;
   }
 
@@ -378,11 +425,11 @@ class EnPassantValidator extends MoveValidator {
             p.position == adjacentPawnPos)
         .firstOrNull;
 
-    if (pawnToCapture == null) return false;
-
-    // FIDE rule: En passant is only valid if the opponent pawn just moved two squares
+    if (pawnToCapture == null)
+      return false; // FIDE rule: En passant is only valid if the opponent pawn just moved two squares
     if (context?.lastDoubleMovePawn != null) {
-      return context!.lastDoubleMovePawn == '${to.col}${from.row}';
+      // The lastDoubleMovePawn should match the position of the pawn we're trying to capture
+      return context!.lastDoubleMovePawn == adjacentPawnPos.toString();
     }
 
     // Without game context, we can only validate the board position
