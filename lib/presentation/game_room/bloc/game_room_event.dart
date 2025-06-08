@@ -101,3 +101,22 @@ class TimeoutEvent extends GameRoomEvent {
   final PieceColor timeoutColor; // which player ran out of time
   TimeoutEvent({required this.timeoutColor});
 }
+
+// Promotion dialog events
+class ShowPromotionDialogEvent extends GameRoomEvent {
+  final Position from;
+  final Position to;
+  final ChessPiece pawn;
+
+  ShowPromotionDialogEvent({
+    required this.from,
+    required this.to,
+    required this.pawn,
+  });
+}
+
+class SelectPromotionPieceEvent extends GameRoomEvent {
+  final PieceType pieceType;
+
+  SelectPromotionPieceEvent({required this.pieceType});
+}

@@ -93,9 +93,7 @@ class Pawn extends ChessPiece {
           }
         }
       }
-    }
-
-    // Diagonal captures
+    } // Diagonal captures
     for (final deltaCol in [-1, 1]) {
       final capturePos =
           Position(position.col + deltaCol, position.row + direction);
@@ -107,6 +105,36 @@ class Pawn extends ChessPiece {
             pieces.where((p) => p.position == capturePos).firstOrNull;
         if (targetPiece != null && targetPiece.color != color) {
           moves.add(capturePos);
+        }
+      }
+    }
+
+    // En passant moves
+    // Check if this pawn is in the correct position for en passant (5th rank for white, 4th rank for black)
+    final enPassantRow = color == PieceColor.white ? 3 : 4;
+    if (position.row == enPassantRow) {
+      for (final deltaCol in [-1, 1]) {
+        final adjacentPos = Position(position.col + deltaCol, position.row);
+        final enPassantCapturePos =
+            Position(position.col + deltaCol, position.row + direction);
+
+        // Check if the adjacent position contains an enemy pawn
+        final adjacentPiece =
+            pieces.where((p) => p.position == adjacentPos).firstOrNull;
+        if (adjacentPiece != null &&
+            adjacentPiece.color != color &&
+            adjacentPiece.type == PieceType.pawn &&
+            enPassantCapturePos.col >= 0 &&
+            enPassantCapturePos.col < 8 &&
+            enPassantCapturePos.row >= 0 &&
+            enPassantCapturePos.row < 8) {
+          // The en passant capture square should be empty
+          final captureSquareEmpty =
+              !pieces.any((p) => p.position == enPassantCapturePos);
+          if (captureSquareEmpty) {
+            // Add this as a potential en passant move - the validator will check if it's valid
+            moves.add(enPassantCapturePos);
+          }
         }
       }
     }
@@ -458,6 +486,25 @@ class King extends ChessPiece {
             pieces.where((p) => p.position == newPos).firstOrNull;
         if (pieceAtPos == null || pieceAtPos.color != color) {
           moves.add(newPos);
+        }
+      }
+    }
+
+    // Castling moves - add potential castling squares
+    // The validator will check if castling is actually legal
+    if (!hasMoved) {
+      final expectedRow = color == PieceColor.white ? 7 : 0;
+      if (position.row == expectedRow && position.col == 4) {
+        // King side castling (O-O)
+        final kingSideCastlePos = Position(6, expectedRow);
+        if (kingSideCastlePos.col >= 0 && kingSideCastlePos.col < 8) {
+          moves.add(kingSideCastlePos);
+        }
+
+        // Queen side castling (O-O-O)
+        final queenSideCastlePos = Position(2, expectedRow);
+        if (queenSideCastlePos.col >= 0 && queenSideCastlePos.col < 8) {
+          moves.add(queenSideCastlePos);
         }
       }
     }

@@ -57,14 +57,18 @@ class GameRoomState extends Equatable {
   final bool isBlackKingInCheck;
   // Attacking pieces positions
   final List<Position> whiteAttackingPieces;
-  final List<Position> blackAttackingPieces;
-  // Timer and clock state
+  final List<Position> blackAttackingPieces; // Timer and clock state
   final int whiteTimeLeft; // in seconds
   final int blackTimeLeft; // in seconds
   final bool timerRunning;
   final bool timerPaused;
   final PieceColor?
       activeTimerColor; // which player's timer is currently running
+  // Promotion dialog state
+  final bool showingPromotionDialog;
+  final Position? promotionFromPosition;
+  final Position? promotionToPosition;
+  final ChessPiece? promotionPawn;
 
   const GameRoomState({
     this.gameRoom,
@@ -100,6 +104,11 @@ class GameRoomState extends Equatable {
     this.lastDoubleMovePawn,
     this.moveNumber = 1,
     this.positionHistory = const [],
+    // Promotion dialog state
+    this.showingPromotionDialog = false,
+    this.promotionFromPosition,
+    this.promotionToPosition,
+    this.promotionPawn,
   });
 
   GameRoomState copyWith({
@@ -136,10 +145,16 @@ class GameRoomState extends Equatable {
     String? lastDoubleMovePawn,
     int? moveNumber,
     List<String>? positionHistory,
+    // Promotion dialog state
+    bool? showingPromotionDialog,
+    Position? promotionFromPosition,
+    Position? promotionToPosition,
+    ChessPiece? promotionPawn,
     bool clearSelectedPosition = false,
     bool clearAnimatingMove = false,
     bool clearHint = false,
     bool clearLastDoubleMovePawn = false,
+    bool clearPromotionDialog = false,
   }) {
     return GameRoomState(
       gameRoom: gameRoom ?? this.gameRoom,
@@ -182,6 +197,18 @@ class GameRoomState extends Equatable {
           : (lastDoubleMovePawn ?? this.lastDoubleMovePawn),
       moveNumber: moveNumber ?? this.moveNumber,
       positionHistory: positionHistory ?? this.positionHistory,
+      // Promotion dialog state
+      showingPromotionDialog: clearPromotionDialog
+          ? false
+          : (showingPromotionDialog ?? this.showingPromotionDialog),
+      promotionFromPosition: clearPromotionDialog
+          ? null
+          : (promotionFromPosition ?? this.promotionFromPosition),
+      promotionToPosition: clearPromotionDialog
+          ? null
+          : (promotionToPosition ?? this.promotionToPosition),
+      promotionPawn:
+          clearPromotionDialog ? null : (promotionPawn ?? this.promotionPawn),
     );
   }
 
@@ -216,9 +243,13 @@ class GameRoomState extends Equatable {
         activeTimerColor,
         // Enhanced game state for FIDE rules
         pgnMoveHistory,
-        fiftyMoveCounter,
-        lastDoubleMovePawn,
+        fiftyMoveCounter, lastDoubleMovePawn,
         moveNumber,
         positionHistory,
+        // Promotion dialog state
+        showingPromotionDialog,
+        promotionFromPosition,
+        promotionToPosition,
+        promotionPawn,
       ];
 }

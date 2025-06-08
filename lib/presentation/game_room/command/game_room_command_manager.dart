@@ -6,6 +6,7 @@ import 'package:chess_game/presentation/game_room/command/ai_move_command.dart';
 import 'package:chess_game/presentation/game_room/command/castle_command.dart';
 import 'package:chess_game/presentation/game_room/command/promote_command.dart';
 import 'package:chess_game/presentation/game_room/memento/chess_board_manager.dart';
+import 'package:chess_game/presentation/game_room/command/en_passant_command.dart';
 
 /// Game Room Command Manager that integrates Command pattern with Memento pattern
 /// This class handles all chess game commands and automatically saves board state
@@ -46,7 +47,9 @@ class GameRoomCommandManager {
   bool _shouldSaveState(Command command) {
     // Don't auto-save for MoveCommand and AIMoveCommand as they're handled manually in the bloc
     // to ensure proper turn synchronization
-    return command is CastleCommand || command is PromoteCommand;
+    return command is CastleCommand ||
+        command is PromoteCommand ||
+        command is EnPassantCommand;
   }
 
   void undo() {
@@ -133,6 +136,25 @@ class GameRoomCommandManager {
       newPiece: newPiece,
       oldPiece: oldPiece,
       newPosition: newPosition,
+      boardManager: _boardManager,
+    );
+    executeCommand(command);
+  }
+
+  /// Execute en passant command
+  void executeEnPassant({
+    required ChessPiece pawn,
+    required Position from,
+    required Position to,
+    required ChessPiece capturedPawn,
+    required Position capturedPawnPosition,
+  }) {
+    final command = EnPassantCommand(
+      pawn: pawn,
+      from: from,
+      to: to,
+      capturedPawn: capturedPawn,
+      capturedPawnPosition: capturedPawnPosition,
       boardManager: _boardManager,
     );
     executeCommand(command);

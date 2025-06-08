@@ -69,6 +69,8 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     on<ResumeTimerEvent>(_onResumeTimer);
     on<TimerTickEvent>(_onTimerTick);
     on<TimeoutEvent>(_onTimeout);
+    on<ShowPromotionDialogEvent>(_onShowPromotionDialog);
+    on<SelectPromotionPieceEvent>(_onSelectPromotionPiece);
   }
 
   void _onInitialized(GameRoomInitialized event, Emitter<GameRoomState> emit) {
@@ -360,13 +362,14 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
     int newFiftyMoveCounter = state.fiftyMoveCounter + 1;
     if (piece.type == PieceType.pawn || capturedPiece != null) {
       newFiftyMoveCounter = 0; // Reset on pawn move or capture
-    }
-
-    // Track last double-move pawn for en passant
+    } // Track last double-move pawn for en passant
     String? newLastDoubleMovePawn;
     if (piece.type == PieceType.pawn &&
         (event.from.row - event.to.row).abs() == 2) {
       newLastDoubleMovePawn = event.to.toString();
+      print(
+          'GameRoom: Pawn double move detected from ${event.from.toString()} to ${event.to.toString()}');
+      print('GameRoom: Setting lastDoubleMovePawn to: $newLastDoubleMovePawn');
     }
 
     // Update move number (increments after black's move)
@@ -658,30 +661,49 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
       }
     }
 
-    // Check for pawn promotion
+    // Check for en passant
+    if (piece.type == PieceType.pawn &&
+        (from.col - to.col).abs() == 1 &&
+        _getPieceAt(to) == null) {
+      // Kiểm tra đúng hàng bắt tốt qua đường
+      final captureRow = piece.color == PieceColor.white ? 3 : 4;
+      if (from.row == captureRow) {
+        final capturedPawnPos = Position(to.col, from.row);
+        final capturedPawn = _getPieceAt(capturedPawnPos);
+        if (capturedPawn != null &&
+            capturedPawn.type == PieceType.pawn &&
+            capturedPawn.color != piece.color) {
+          // Thực thi en passant
+          _commandManager.executeEnPassant(
+            pawn: piece,
+            from: from,
+            to: to,
+            capturedPawn: capturedPawn,
+            capturedPawnPosition: capturedPawnPos,
+          );
+          // Cập nhật board và state
+          final newBoard = _boardManager.board;
+          _boardManager.switchTurn();
+          // Save the board state after the turn is switched
+          _boardManager.saveCurrentState();
+
+          emit(state.copyWith(
+            board: newBoard,
+            isWhitesTurn: !state.isWhitesTurn,
+            possibleMoves: _createEmptyMovesMatrix(),
+            clearSelectedPosition: true,
+            clearHint: true,
+          ));
+          return true;
+        }
+      }
+    } // Check for pawn promotion
     if (isPromotionMove(from, to)) {
-      // For now, always promote to queen (in a real game, this would show a dialog)
-      final promotedPiece = Queen(
-        color: piece.color,
-        position: to,
-      );
-
-      executePromotionMove(
+      // Show promotion dialog for the player to choose piece type
+      add(ShowPromotionDialogEvent(
+        from: from,
+        to: to,
         pawn: piece,
-        newPiece: promotedPiece,
-        promotionPosition: to,
-      ); // Update the board state after promotion
-      final newBoard = _executePromotionOnBoard(from, to, promotedPiece);
-
-      // Switch turn in board manager to keep it synchronized with UI state
-      _boardManager.switchTurn();
-
-      emit(state.copyWith(
-        board: newBoard,
-        isWhitesTurn: !state.isWhitesTurn,
-        possibleMoves: _createEmptyMovesMatrix(),
-        clearSelectedPosition: true,
-        clearHint: true, // Clear hint after promotion move
       ));
       return true;
     }
@@ -693,21 +715,21 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
   ChessPiece? _getRookForCastle(Position kingFrom, Position kingTo) {
     final isKingsideCastle = kingTo.col > kingFrom.col;
     final rookCol = isKingsideCastle ? 7 : 0;
-    return _getPieceAt(Position(kingFrom.row, rookCol));
+    return _getPieceAt(Position(rookCol, kingFrom.row));
   }
 
   /// Get the rook's original position for castling
   Position _getRookPositionForCastle(Position kingFrom, Position kingTo) {
     final isKingsideCastle = kingTo.col > kingFrom.col;
     final rookCol = isKingsideCastle ? 7 : 0;
-    return Position(kingFrom.row, rookCol);
+    return Position(rookCol, kingFrom.row);
   }
 
   /// Get the new rook position after castling
   Position _getNewRookPositionForCastle(Position kingFrom, Position kingTo) {
     final isKingsideCastle = kingTo.col > kingFrom.col;
     final newRookCol = isKingsideCastle ? 5 : 3;
-    return Position(kingFrom.row, newRookCol);
+    return Position(newRookCol, kingFrom.row);
   }
 
   /// Execute castle move on the board
@@ -814,7 +836,19 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
       for (final aiMove in aiSuggestedMoves) {
         final piece = _getPieceAt(aiMove.from);
         if (piece != null &&
-            validator.validate(piece, aiMove.from, aiMove.to, allPieces)) {
+            validator.validate(
+                piece,
+                aiMove.from,
+                aiMove.to,
+                allPieces,
+                FIDERuleContext(
+                  moveHistory: state.pgnMoveHistory,
+                  lastDoubleMovePawn: state.lastDoubleMovePawn,
+                  fiftyMoveCounter: state.fiftyMoveCounter,
+                  positionHistory: state.positionHistory,
+                  moveNumber: state.moveNumber,
+                  isWhitesTurn: state.isWhitesTurn,
+                ))) {
           validAIMoves.add({
             'piece': piece,
             'from': aiMove.from,
@@ -848,7 +882,18 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
 
               // Use validator to check if move is truly legal
               if (validator.validate(
-                  piece, piece.position, targetPosition, allPieces)) {
+                  piece,
+                  piece.position,
+                  targetPosition,
+                  allPieces,
+                  FIDERuleContext(
+                    moveHistory: state.pgnMoveHistory,
+                    lastDoubleMovePawn: state.lastDoubleMovePawn,
+                    fiftyMoveCounter: state.fiftyMoveCounter,
+                    positionHistory: state.positionHistory,
+                    moveNumber: state.moveNumber,
+                    isWhitesTurn: state.isWhitesTurn,
+                  ))) {
                 validAIMoves.add({
                   'piece': piece,
                   'from': piece.position,
@@ -1107,67 +1152,115 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
 
   List<List<bool>> _getPossibleMoves(ChessPiece piece) {
     final moves = _createEmptyMovesMatrix();
-
-    // Get all pieces from the board manager
     final allPieces = _boardManager.getAllPieces();
+    final context = FIDERuleContext(
+      moveHistory: state.pgnMoveHistory,
+      lastDoubleMovePawn: state.lastDoubleMovePawn,
+      fiftyMoveCounter: state.fiftyMoveCounter,
+      positionHistory: state.positionHistory,
+      moveNumber: state.moveNumber,
+      isWhitesTurn: state.isWhitesTurn,
+    );
 
-    // Always use the move validator to get valid moves that consider the current chess match state
-    // This includes checks, pins, castling restrictions, and other chess rules
+    print(
+        'GameRoom: Calculating possible moves for ${piece.type} at ${piece.position.toString()}');
+    print(
+        'GameRoom: Current lastDoubleMovePawn in context: ${context.lastDoubleMovePawn}');
+
+    int validMoveCount = 0;
+
     if (_currentGameRoom?.moveValidator != null) {
       final validator = _currentGameRoom!.moveValidator;
-
-      // Check all possible positions on the board using the complete validation chain
       for (int row = 0; row < 8; row++) {
         for (int col = 0; col < 8; col++) {
           final targetPosition = Position(col, row);
-
-          // Skip if it's the same position as the piece
           if (targetPosition == piece.position) continue;
 
-          // Validate the move using the complete validation chain
-          // This ensures we only show moves that are truly legal in the current game state
-          if (validator.validate(
-              piece, piece.position, targetPosition, allPieces)) {
+          final isValid = validator.validate(
+              piece, piece.position, targetPosition, allPieces, context);
+
+          if (isValid) {
             moves[row][col] = true;
+            validMoveCount++;
+
+            // Special logging for potential en passant moves
+            if (piece.type == PieceType.pawn &&
+                (targetPosition.col - piece.position.col).abs() == 1 &&
+                allPieces.where((p) => p.position == targetPosition).isEmpty) {
+              print(
+                  'GameRoom: Valid en passant move found: ${piece.position.toString()} -> ${targetPosition.toString()}');
+            }
           }
         }
       }
     } else {
-      // Create a fallback validator if gameRoom validator is not available
-      // This ensures we always validate moves properly even in edge cases
       final fallbackValidator = MoveValidatorChain.createCompleteChain();
-
       for (int row = 0; row < 8; row++) {
         for (int col = 0; col < 8; col++) {
           final targetPosition = Position(col, row);
-
-          // Skip if it's the same position as the piece
           if (targetPosition == piece.position) continue;
 
-          // Use fallback validator with complete validation chain
-          if (fallbackValidator.validate(
-              piece, piece.position, targetPosition, allPieces)) {
+          final isValid = fallbackValidator.validate(
+              piece, piece.position, targetPosition, allPieces, context);
+
+          if (isValid) {
             moves[row][col] = true;
+            validMoveCount++;
+
+            // Special logging for potential en passant moves
+            if (piece.type == PieceType.pawn &&
+                (targetPosition.col - piece.position.col).abs() == 1 &&
+                allPieces.where((p) => p.position == targetPosition).isEmpty) {
+              print(
+                  'GameRoom: Valid en passant move found: ${piece.position.toString()} -> ${targetPosition.toString()}');
+            }
+
+            // Additional logging for en passant debugging
+            if (piece.type == PieceType.pawn &&
+                (targetPosition.col - piece.position.col).abs() == 1) {
+              final hasDestPiece = allPieces
+                  .where((p) => p.position == targetPosition)
+                  .isNotEmpty;
+              print(
+                  'GameRoom: Pawn diagonal move ${piece.position.toString()} -> ${targetPosition.toString()}, hasDestPiece: $hasDestPiece, isValid: $isValid');
+            }
+          } else {
+            // Log failed pawn diagonal moves for en passant debugging
+            if (piece.type == PieceType.pawn &&
+                (targetPosition.col - piece.position.col).abs() == 1) {
+              final hasDestPiece = allPieces
+                  .where((p) => p.position == targetPosition)
+                  .isNotEmpty;
+              print(
+                  'GameRoom: FAILED Pawn diagonal move ${piece.position.toString()} -> ${targetPosition.toString()}, hasDestPiece: $hasDestPiece, isValid: $isValid');
+            }
           }
         }
       }
     }
 
+    print(
+        'GameRoom: Found $validMoveCount valid moves for ${piece.type} at ${piece.position.toString()}');
+
     return moves;
   }
 
   bool _isValidMove(ChessPiece piece, Position from, Position to) {
-    // Get all pieces from the board manager
     final allPieces = _boardManager.getAllPieces();
-
-    // Use the move validator for proper validation that considers all chess rules
+    final context = FIDERuleContext(
+      moveHistory: state.pgnMoveHistory,
+      lastDoubleMovePawn: state.lastDoubleMovePawn,
+      fiftyMoveCounter: state.fiftyMoveCounter,
+      positionHistory: state.positionHistory,
+      moveNumber: state.moveNumber,
+      isWhitesTurn: state.isWhitesTurn,
+    );
     if (_currentGameRoom?.moveValidator != null) {
       return _currentGameRoom!.moveValidator
-          .validate(piece, from, to, allPieces);
+          .validate(piece, from, to, allPieces, context);
     } else {
-      // Create a fallback validator if gameRoom validator is not available
       final fallbackValidator = MoveValidatorChain.createCompleteChain();
-      return fallbackValidator.validate(piece, from, to, allPieces);
+      return fallbackValidator.validate(piece, from, to, allPieces, context);
     }
   }
 
@@ -1597,10 +1690,77 @@ class GameRoomBloc extends Bloc<GameRoomEvent, GameRoomState> {
       timerPaused: false,
       whiteTimeLeft: _whiteTimeLeft,
       blackTimeLeft: _blackTimeLeft,
-    ));
-
-    // Save match history with timeout result
+    )); // Save match history with timeout result
     _saveMatchHistoryOnTimeout(event.timeoutColor);
+  }
+
+  void _onShowPromotionDialog(
+      ShowPromotionDialogEvent event, Emitter<GameRoomState> emit) {
+    emit(state.copyWith(
+      showingPromotionDialog: true,
+      promotionFromPosition: event.from,
+      promotionToPosition: event.to,
+      promotionPawn: event.pawn,
+      clearSelectedPosition: true,
+      possibleMoves: _createEmptyMovesMatrix(),
+      clearHint: true,
+    ));
+  }
+
+  void _onSelectPromotionPiece(
+      SelectPromotionPieceEvent event, Emitter<GameRoomState> emit) {
+    if (!state.showingPromotionDialog ||
+        state.promotionFromPosition == null ||
+        state.promotionToPosition == null ||
+        state.promotionPawn == null) {
+      return;
+    }
+
+    final from = state.promotionFromPosition!;
+    final to = state.promotionToPosition!;
+    final pawn = state.promotionPawn!;
+
+    // Create the promoted piece based on user selection
+    ChessPiece promotedPiece;
+    switch (event.pieceType) {
+      case PieceType.queen:
+        promotedPiece = Queen(color: pawn.color, position: to);
+        break;
+      case PieceType.rook:
+        promotedPiece = Rook(color: pawn.color, position: to);
+        break;
+      case PieceType.bishop:
+        promotedPiece = Bishop(color: pawn.color, position: to);
+        break;
+      case PieceType.knight:
+        promotedPiece = Knight(color: pawn.color, position: to);
+        break;
+      default:
+        promotedPiece = Queen(color: pawn.color, position: to);
+        break;
+    }
+
+    // Execute the promotion command
+    executePromotionMove(
+      pawn: pawn,
+      newPiece: promotedPiece,
+      promotionPosition: to,
+    );
+
+    // Update the board state after promotion
+    final newBoard = _executePromotionOnBoard(from, to, promotedPiece);
+
+    // Switch turn in board manager to keep it synchronized with UI state
+    _boardManager.switchTurn();
+
+    // Clear promotion dialog and update game state
+    emit(state.copyWith(
+      board: newBoard,
+      isWhitesTurn: !state.isWhitesTurn,
+      possibleMoves: _createEmptyMovesMatrix(),
+      clearPromotionDialog: true,
+      clearHint: true,
+    ));
   }
 
   @override

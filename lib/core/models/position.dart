@@ -23,6 +23,9 @@ class Position {
     return '$file$rank';
   }
 
+  @override
+  String toString() => algebraic;
+
   // Add row/col getters for compatibility with other code in the codebase
   int get row => y;
   int get col => x;

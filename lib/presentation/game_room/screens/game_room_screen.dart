@@ -8,6 +8,7 @@ import 'package:chess_game/presentation/game_room/bloc/game_room_bloc.dart';
 import 'package:chess_game/presentation/game_room/widgets/chess_board.dart';
 import 'package:chess_game/presentation/game_room/widgets/chess_timer.dart';
 import 'package:chess_game/presentation/game_room/widgets/game_over_dialog.dart';
+import 'package:chess_game/presentation/game_room/widgets/promotion_dialog.dart';
 import 'package:chess_game/theme/app_theme.dart';
 import 'package:chess_game/theme/font/app_font_weight.dart';
 import 'package:chess_game/theme/spacing/app_spacing.dart';
@@ -26,6 +27,7 @@ class GameRoomScreen extends StatefulWidget {
 class _GameRoomScreenState extends State<GameRoomScreen> {
   final _gameRoomBloc = getIt.get<GameRoomBloc>();
   final _themeColor = getIt.get<AppTheme>().themeColor;
+  bool _isPromotionDialogShowing = false;
 
   @override
   void initState() {
@@ -73,6 +75,29 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
     _gameRoomBloc.add(LoadGameConfigEvent(gameId: widget.gameId));
   }
 
+  void _showPromotionDialog(BuildContext context, GameRoomState state) {
+    if (_isPromotionDialogShowing) return; // Prevent multiple dialogs
+
+    _isPromotionDialogShowing = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return PromotionDialog(
+          pawnColor: state.promotionPawn!.color,
+          onPieceSelected: (pieceType) {
+            Navigator.of(context).pop();
+            _isPromotionDialogShowing = false;
+            _gameRoomBloc.add(SelectPromotionPieceEvent(pieceType: pieceType));
+          },
+        );
+      },
+    ).then((_) {
+      // Reset flag when dialog is dismissed (shouldn't happen due to barrierDismissible: false, but good for safety)
+      _isPromotionDialogShowing = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider<GameRoomBloc>(
@@ -87,6 +112,15 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
             context
                 .read<GameRoomBloc>()
                 .add(StartNewGameEvent(gameConfig: state.gameConfig!));
+          }
+
+          // Show promotion dialog when needed (only if not already showing)
+          if (state.showingPromotionDialog &&
+              state.promotionFromPosition != null &&
+              state.promotionToPosition != null &&
+              state.promotionPawn != null &&
+              !_isPromotionDialogShowing) {
+            _showPromotionDialog(context, state);
           }
         },
         child: BlocSelector<GameRoomBloc, GameRoomState, GameConfig?>(
@@ -122,7 +156,8 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
                         if (gameConfig != null) _buildGameInfoBar(gameConfig),
 
                         // Timer display
-                        if (gameConfig != null && gameConfig.timeControlMinutes > 0)
+                        if (gameConfig != null &&
+                            gameConfig.timeControlMinutes > 0)
                           const ChessTimer(),
 
                         // Chess board - responsive sizing
@@ -241,7 +276,8 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
                     _buildControlButton(
                       'Undo',
                       state.gameStarted && !state.gameEnded
-                          ? () => context.read<GameRoomBloc>().add(UndoMoveEvent())
+                          ? () =>
+                              context.read<GameRoomBloc>().add(UndoMoveEvent())
                           : null,
                     ),
                     _buildControlButton(
@@ -249,21 +285,29 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
                       state.gameStarted &&
                               !state.gameEnded &&
                               !state.showingHint
-                          ? () => context.read<GameRoomBloc>().add(RequestHintEvent())
+                          ? () => context
+                              .read<GameRoomBloc>()
+                              .add(RequestHintEvent())
                           : state.showingHint
-                              ? () => context.read<GameRoomBloc>().add(DismissHintEvent())
+                              ? () => context
+                                  .read<GameRoomBloc>()
+                                  .add(DismissHintEvent())
                               : null,
                     ),
                     _buildControlButton(
                       'Restart',
                       state.gameStarted
-                          ? () => context.read<GameRoomBloc>().add(RestartGameEvent())
+                          ? () => context
+                              .read<GameRoomBloc>()
+                              .add(RestartGameEvent())
                           : null,
                     ),
                     if (state.gameEnded)
                       _buildControlButton(
                         'New Game',
-                        () => context.read<GameRoomBloc>().add(RestartGameEvent()),
+                        () => context
+                            .read<GameRoomBloc>()
+                            .add(RestartGameEvent()),
                       ),
                   ],
                 );
@@ -275,7 +319,9 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
                       child: _buildControlButton(
                         'Undo',
                         state.gameStarted && !state.gameEnded
-                            ? () => context.read<GameRoomBloc>().add(UndoMoveEvent())
+                            ? () => context
+                                .read<GameRoomBloc>()
+                                .add(UndoMoveEvent())
                             : null,
                       ),
                     ),
@@ -286,9 +332,13 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
                         state.gameStarted &&
                                 !state.gameEnded &&
                                 !state.showingHint
-                            ? () => context.read<GameRoomBloc>().add(RequestHintEvent())
+                            ? () => context
+                                .read<GameRoomBloc>()
+                                .add(RequestHintEvent())
                             : state.showingHint
-                                ? () => context.read<GameRoomBloc>().add(DismissHintEvent())
+                                ? () => context
+                                    .read<GameRoomBloc>()
+                                    .add(DismissHintEvent())
                                 : null,
                       ),
                     ),
@@ -297,7 +347,9 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
                       child: _buildControlButton(
                         'Restart',
                         state.gameStarted
-                            ? () => context.read<GameRoomBloc>().add(RestartGameEvent())
+                            ? () => context
+                                .read<GameRoomBloc>()
+                                .add(RestartGameEvent())
                             : null,
                       ),
                     ),
@@ -306,7 +358,9 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
                       Flexible(
                         child: _buildControlButton(
                           'New Game',
-                          () => context.read<GameRoomBloc>().add(RestartGameEvent()),
+                          () => context
+                              .read<GameRoomBloc>()
+                              .add(RestartGameEvent()),
                         ),
                       ),
                     ],
@@ -315,7 +369,7 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
               }
             },
           ),
-          
+
           // Demo controls - only show in debug mode
           if (kDebugMode) ..._buildDemoControls(),
         ],
