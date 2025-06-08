@@ -41,7 +41,6 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
   bool _playAsWhite = true;
   int _timeControlMinutes = 10;
   int _incrementSeconds = 5;
-
   String _getDifficultyText(int level) {
     switch (level) {
       case 1:
@@ -59,12 +58,37 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
     }
   }
 
+  void _updatePlayerTypes() {
+    print(
+        '_updatePlayerTypes called: isAIOpponent=${widget.isAIOpponent}, playAsWhite=$_playAsWhite');
+    if (widget.isAIOpponent) {
+      // If playing against AI, set AI to opposite color of player's choice
+      if (_playAsWhite) {
+        // Player is White, AI is Black
+        print('Setting: Player=White, AI=Black');
+        _gameConfigBuilder.setPlayerTypes(false, true);
+      } else {
+        // Player is Black, AI is White
+        print('Setting: Player=Black, AI=White');
+        _gameConfigBuilder.setPlayerTypes(true, false);
+      }
+    } else {
+      // If playing against friend, both are human players
+      print('Setting: Both players are human');
+      _gameConfigBuilder.setPlayerTypes(false, false);
+    }
+
+    // Debug: Build config immediately to verify settings
+    final testConfig = _gameConfigBuilder.build();
+    print('Test config after setPlayerTypes: ${testConfig.toJson()}');
+  }
+
   Widget _buildColorOption(String label, bool isWhite) {
     return GestureDetector(
       onTap: () {
         setState(() {
           _playAsWhite = isWhite;
-          _gameConfigBuilder.setPlayerTypes(!isWhite, isWhite);
+          _updatePlayerTypes();
         });
       },
       child: Container(
@@ -129,8 +153,12 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
   }
 
   Future<void> _createGameAndNavigate() async {
+    // Set the builder in director to ensure they use the same instance
+    _configDirector.setBuilder(_gameConfigBuilder);
+
     // Create game configuration
     final gameConfig = _configDirector.buildGameConfig();
+    print('Game Config: ${gameConfig.toJson()}');
     // Generate unique game id
     final gameId = DateTime.now()
         .millisecondsSinceEpoch
@@ -158,6 +186,9 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
     super.initState();
     _gameConfigBuilder.reset();
     _gameConfigBuilder.setDifficultyLevel(widget.aiDifficulty ?? 3);
+
+    // Set initial player types based on isAIOpponent and default color choice
+    _updatePlayerTypes();
   }
 
   @override
