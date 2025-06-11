@@ -424,9 +424,9 @@ class EnPassantValidator extends MoveValidator {
             p.color != piece.color &&
             p.position == adjacentPawnPos)
         .firstOrNull;
-
-    if (pawnToCapture == null)
+    if (pawnToCapture == null) {
       return false; // FIDE rule: En passant is only valid if the opponent pawn just moved two squares
+    }
     if (context?.lastDoubleMovePawn != null) {
       // The lastDoubleMovePawn should match the position of the pawn we're trying to capture
       return context!.lastDoubleMovePawn == adjacentPawnPos.toString();
