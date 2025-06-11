@@ -5,14 +5,14 @@ import 'package:chess_game/core/models/chess_piece.dart';
 import 'package:chess_game/core/models/position.dart';
 import 'package:chess_game/core/models/game_config.dart';
 
-import 'package:chess_game/core/patterns/chain_of_responsibility/move_validator.dart';
+import 'package:chess_game/presentation/game_room/chain_of_responsibility/move_validator.dart';
 import 'package:chess_game/presentation/game_room/observer/interface/board_subscriber_interface.dart';
 import 'package:chess_game/presentation/setup/builder/implementation/game_config_builder.dart';
 import 'package:chess_game/presentation/game_room/command/command_invoker.dart';
 import 'package:chess_game/presentation/game_room/command/move_command.dart';
 import 'package:chess_game/presentation/game_room/memento/board_memento.dart';
-import 'package:chess_game/core/patterns/state/game_state.dart';
-import 'package:chess_game/core/patterns/strategy/ai_strategy.dart';
+import 'package:chess_game/presentation/game_room/state/game_state.dart';
+import 'package:chess_game/presentation/game_room/strategy/ai_strategy.dart';
 
 /// The main GameRoom class that coordinates all chess game operations
 class GameRoom {
