@@ -3,6 +3,8 @@ import 'package:chess_game/core/common/scaffold/common_app_bar.dart';
 import 'package:chess_game/core/common/scaffold/common_scaffold.dart';
 import 'package:chess_game/core/common/text/common_text.dart';
 import 'package:chess_game/core/models/game_config.dart';
+import 'package:chess_game/data/entities/game_room_entity.dart';
+import 'package:chess_game/data/repository/game_room_repository.dart';
 import 'package:chess_game/di/injection.dart';
 import 'package:chess_game/presentation/game_room/bloc/game_room_bloc.dart';
 import 'package:chess_game/presentation/game_room/widgets/chess_board.dart';
@@ -15,6 +17,7 @@ import 'package:chess_game/theme/spacing/app_spacing.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:convert';
 
 class GameRoomScreen extends StatefulWidget {
   final String gameId;
@@ -26,8 +29,10 @@ class GameRoomScreen extends StatefulWidget {
 
 class _GameRoomScreenState extends State<GameRoomScreen> {
   final _gameRoomBloc = getIt.get<GameRoomBloc>();
+  final _gameRoomRepository = getIt.get<GameRoomRepository>();
   final _themeColor = getIt.get<AppTheme>().themeColor;
   bool _isPromotionDialogShowing = false;
+  bool _isGameOverDialogShowing = false;
 
   @override
   void initState() {
@@ -64,15 +69,132 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
           aiDifficulty: isAiOpponent ? gameConfig.aiDifficultyLevel : null,
           onPlayAgain: () {
             Navigator.of(context).pop();
-            _resetGame();
+            _isGameOverDialogShowing = false;
+            // Use Prototype pattern to create new game from current config
+            _createNewGameFromPrototype();
           },
         );
       },
-    );
+    ).then((_) {
+      // Reset flag when dialog is dismissed
+      _isGameOverDialogShowing = false;
+    });
   }
 
   void _resetGame() {
     _gameRoomBloc.add(LoadGameConfigEvent(gameId: widget.gameId));
+  }
+
+  /// Create a new game using Prototype pattern to clone the current configuration
+  ///
+  /// This method demonstrates the Prototype design pattern by:
+  /// 1. Using the existing GameConfig's clone() method to create a deep copy
+  /// 2. Creating a new game room entity with a unique ID
+  /// 3. Saving the new configuration to the repository
+  /// 4. Starting a new game with the cloned configuration
+  ///
+  /// This is similar to how _buildDemoControls works for simulating game ends,
+  /// but instead creates new games with cloned configurations.
+  ///
+  /// The Prototype pattern allows us to:
+  /// - Create new objects by copying existing instances
+  /// - Avoid the overhead of re-setting all configuration parameters
+  /// - Maintain consistency with the previous game's settings
+  /// - Enable easy variations (like color swapping) of existing configurations
+  Future<void> _createNewGameFromPrototype() async {
+    final state = _gameRoomBloc.state;
+    final currentConfig = state.gameConfig;
+
+    if (currentConfig == null) {
+      print('No current config available for cloning');
+      return;
+    }
+
+    try {
+      // Use Prototype pattern to clone the current game configuration
+      // This creates a deep copy of the existing configuration
+      final clonedConfig = currentConfig.clone();
+
+      print('Prototype Pattern: Cloned config from existing game');
+      print('Original config: ${currentConfig.toJson()}');
+      print('Cloned config: ${clonedConfig.toJson()}');
+
+      // Generate a new unique game ID for the cloned game
+      final newGameId = DateTime.now().millisecondsSinceEpoch.toString();
+
+      // Create a new game room entity with the cloned configuration
+      final gameRoom = GameRoomEntity(
+        id: newGameId,
+        json: jsonEncode({
+          'gameConfig': jsonDecode(clonedConfig.toJson()),
+          'createdAt': DateTime.now().toIso8601String(),
+        }),
+      );
+
+      // Save the new game room to repository
+      await _gameRoomRepository.saveGameRoom(gameRoom);
+
+      print('Prototype Pattern: Created new game room with ID: $newGameId');
+
+      // Start the new game with the cloned configuration
+      _gameRoomBloc.add(StartNewGameEvent(gameConfig: clonedConfig));
+    } catch (e) {
+      print('Error creating new game from prototype: $e');
+      // Fallback to the original reset method
+      _resetGame();
+    }
+  }
+
+  /// Alternative: Create a new game with swapped colors (for variety)
+  ///
+  /// This demonstrates another use of the Prototype pattern with modification:
+  /// 1. Clone the existing configuration using the Prototype pattern
+  /// 2. Apply a modification (swap player colors) using the withSwappedColors() method
+  /// 3. Create and save a new game room with the modified configuration
+  ///
+  /// This shows how the Prototype pattern can be extended to create variations
+  /// of existing objects, not just exact copies. The withSwappedColors() method
+  /// is itself an implementation of the Prototype pattern that creates a modified clone.
+  Future<void> _createNewGameWithSwappedColors() async {
+    final state = _gameRoomBloc.state;
+    final currentConfig = state.gameConfig;
+
+    if (currentConfig == null) {
+      print('No current config available for cloning');
+      return;
+    }
+
+    try {
+      // Use Prototype pattern with modification - swap the player colors
+      final clonedConfigWithSwappedColors = currentConfig.withSwappedColors();
+
+      print('Prototype Pattern: Created config with swapped colors');
+      print('Original config: ${currentConfig.toJson()}');
+      print('Modified config: ${clonedConfigWithSwappedColors.toJson()}');
+
+      // Generate a new unique game ID
+      final newGameId = DateTime.now().millisecondsSinceEpoch.toString();
+
+      // Create a new game room entity
+      final gameRoom = GameRoomEntity(
+        id: newGameId,
+        json: jsonEncode({
+          'gameConfig': jsonDecode(clonedConfigWithSwappedColors.toJson()),
+          'createdAt': DateTime.now().toIso8601String(),
+        }),
+      );
+
+      // Save to repository
+      await _gameRoomRepository.saveGameRoom(gameRoom);
+
+      // Start the new game
+      _gameRoomBloc
+          .add(StartNewGameEvent(gameConfig: clonedConfigWithSwappedColors));
+    } catch (e) {
+      print('Error creating new game with swapped colors: $e');
+      // Fallback to normal clone
+      _createNewGameFromPrototype();
+    }
   }
 
   void _showPromotionDialog(BuildContext context, GameRoomState state) {
@@ -121,6 +243,18 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
               state.promotionPawn != null &&
               !_isPromotionDialogShowing) {
             _showPromotionDialog(context, state);
+          } // Show game over dialog when game ends (only if not already showing)
+          if (state.gameEnded &&
+              state.winner != null &&
+              !_isGameOverDialogShowing) {
+            print(
+                '🎯 GAME_OVER_DIALOG: Game ended detected! Winner: ${state.winner}');
+            _isGameOverDialogShowing = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              print(
+                  '🎯 GAME_OVER_DIALOG: Showing game end dialog for winner: ${state.winner}');
+              _showGameEndDialog(context, state.winner!);
+            });
           }
         },
         child: BlocSelector<GameRoomBloc, GameRoomState, GameConfig?>(
@@ -371,7 +505,7 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
           ),
 
           // Demo controls - only show in debug mode
-          if (kDebugMode) ..._buildDemoControls(),
+          // if (kDebugMode) ..._buildDemoControls(),
         ],
       ),
     );
@@ -431,6 +565,22 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
             child: CommonButton(
               text: 'Draw',
               onPressed: () => _simulateGameEnd('Draw'),
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.rem100),
+            ),
+          ),
+          SizedBox(
+            width: 120,
+            child: CommonButton(
+              text: 'Clone Game',
+              onPressed: () => _createNewGameFromPrototype(),
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.rem100),
+            ),
+          ),
+          SizedBox(
+            width: 120,
+            child: CommonButton(
+              text: 'Swap Colors',
+              onPressed: () => _createNewGameWithSwappedColors(),
               padding: EdgeInsets.symmetric(vertical: AppSpacing.rem100),
             ),
           ),
