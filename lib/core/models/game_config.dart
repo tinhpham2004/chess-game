@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:chess_game/core/patterns/prototype/prototype.dart';
+import 'package:chess_game/presentation/game_room/prototype/prototype.dart';
 
 class GameConfig implements Prototype {
   final int timeControlMinutes;
