@@ -134,8 +134,8 @@ abstract class BaseAIStrategy implements AIStrategy {
   void setMoveValidator(GameRoomMoveValidator validator) {
     _moveValidator = validator;
   }
-
   /// Get all valid moves for a color
+  @override
   List<MoveEvaluation> getAllValidMoves(
       List<ChessPiece> pieces, PieceColor color) {
     final validMoves = <MoveEvaluation>[];
@@ -161,8 +161,8 @@ abstract class BaseAIStrategy implements AIStrategy {
 
     return validMoves;
   }
-
   /// Evaluate board position
+  @override
   double evaluateBoard(List<ChessPiece> pieces, PieceColor aiColor) {
     double score = 0.0;
 
