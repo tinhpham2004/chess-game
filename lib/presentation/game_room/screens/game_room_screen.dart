@@ -1,4 +1,3 @@
-import 'package:chess_game/core/common/button/common_button.dart';
 import 'package:chess_game/core/common/scaffold/common_app_bar.dart';
 import 'package:chess_game/core/common/scaffold/common_scaffold.dart';
 import 'package:chess_game/core/common/text/common_text.dart';
@@ -12,6 +11,7 @@ import 'package:chess_game/presentation/game_room/widgets/chess_timer.dart';
 import 'package:chess_game/presentation/game_room/widgets/game_over_dialog.dart';
 import 'package:chess_game/presentation/game_room/widgets/promotion_dialog.dart';
 import 'package:chess_game/theme/app_theme.dart';
+import 'package:chess_game/theme/font/app_font_size.dart';
 import 'package:chess_game/theme/font/app_font_weight.dart';
 import 'package:chess_game/theme/spacing/app_spacing.dart';
 import 'package:flutter/foundation.dart';
@@ -262,58 +262,57 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
           builder: (context, gameConfig) {
             return CommonScaffold(
               appBar: CommonAppBar(
-                title: 'Game: ${widget.gameId}',
+                title: 'Chess Game',
                 actions: [
-                  IconButton(
-                    icon: const Icon(Icons.settings),
-                    onPressed: () {
-                      // Show game settings dialog
-                    },
+                  Container(
+                    margin: EdgeInsets.only(right: AppSpacing.rem150),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _themeColor.primaryColor.withOpacity(0.1),
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.settings,
+                        color: _themeColor.primaryColor,
+                      ),
+                      onPressed: () {
+                        // Show game settings dialog
+                      },
+                      tooltip: 'Game Settings',
+                    ),
                   ),
                 ],
               ),
               backgroundColor: _themeColor.backgroundColor,
               isLoading: gameConfig == null,
-              body: SafeArea(
-                child: SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: MediaQuery.of(context).size.height -
-                          AppBar().preferredSize.height -
-                          MediaQuery.of(context).padding.top -
-                          MediaQuery.of(context).padding.bottom,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Game info bar
-                        if (gameConfig != null) _buildGameInfoBar(gameConfig),
+              body: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      _themeColor.surfaceColor.withOpacity(0.3),
+                      _themeColor.backgroundColor,
+                    ],
+                  ),
+                ),
+                child: SafeArea(
+                  child: Column(
+                    children: [
+                      // Timer display - fixed at top
+                      if (gameConfig != null &&
+                          gameConfig.timeControlMinutes > 0)
+                        _buildTimerSection(),
 
-                        // Timer display
-                        if (gameConfig != null &&
-                            gameConfig.timeControlMinutes > 0)
-                          const ChessTimer(),
+                      // Chess board - maximized
+                      Expanded(
+                        child: _buildChessBoard(),
+                      ),
 
-                        // Chess board - responsive sizing
-                        Container(
-                          constraints: const BoxConstraints(
-                            maxWidth: 600, // Maximum width for larger screens
-                            maxHeight: 600, // Maximum height
-                          ),
-                          child: AspectRatio(
-                            aspectRatio: 1.0,
-                            child: Padding(
-                              padding: EdgeInsets.all(AppSpacing.rem100),
-                              child: const ChessBoard(),
-                            ),
-                          ),
-                        ),
-
-                        // Game controls
-                        _buildGameControls(
-                            context, context.read<GameRoomBloc>().state),
-                      ],
-                    ),
+                      // Game controls - simple horizontal layout
+                      _buildGameControls(
+                          context, context.read<GameRoomBloc>().state),
+                    ],
                   ),
                 ),
               ),
@@ -324,268 +323,242 @@ class _GameRoomScreenState extends State<GameRoomScreen> {
     );
   }
 
-  Widget _buildGameInfoBar(GameConfig gameConfig) {
-    final isAiGame = gameConfig.isWhitePlayerAI || gameConfig.isBlackPlayerAI;
+  Widget _buildTimerSection() {
+    return const ChessTimer();
+  }
 
-    final opponentType = isAiGame ? 'AI' : 'Friend';
-    final difficulty =
-        isAiGame ? ' (Level: ${gameConfig.aiDifficultyLevel})' : '';
-
+  Widget _buildChessBoard() {
     return Container(
-      padding: EdgeInsets.all(AppSpacing.rem100),
-      color: _themeColor.secondaryColor.withOpacity(0.2),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // Use column layout for smaller screens to prevent overflow
-          if (constraints.maxWidth < 400) {
-            return Column(
-              children: [
-                CommonText(
-                  'vs $opponentType$difficulty',
-                  style: TextStyle(
-                    color: _themeColor.textPrimaryColor,
-                    fontWeight: AppFontWeight.medium,
-                  ),
-                  align: TextAlign.center,
-                ),
-                SizedBox(height: AppSpacing.rem050),
-                CommonText(
-                  'Time: ${gameConfig.timeControlMinutes} min / ${gameConfig.incrementSeconds} sec',
-                  style: TextStyle(
-                    color: _themeColor.textPrimaryColor,
-                    fontWeight: AppFontWeight.medium,
-                  ),
-                  align: TextAlign.center,
-                ),
-              ],
-            );
-          } else {
-            return Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Flexible(
-                  child: CommonText(
-                    'vs $opponentType$difficulty',
-                    style: TextStyle(
-                      color: _themeColor.textPrimaryColor,
-                      fontWeight: AppFontWeight.medium,
-                    ),
-                    overFlow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Flexible(
-                  child: CommonText(
-                    'Time: ${gameConfig.timeControlMinutes} min / ${gameConfig.incrementSeconds} sec',
-                    style: TextStyle(
-                      color: _themeColor.textPrimaryColor,
-                      fontWeight: AppFontWeight.medium,
-                    ),
-                    overFlow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            );
-          }
-        },
+      width: double.infinity,
+      padding: EdgeInsets.all(AppSpacing.rem150),
+      child: AspectRatio(
+        aspectRatio: 1.0,
+        child: const ChessBoard(),
       ),
     );
   }
 
   Widget _buildGameControls(BuildContext context, GameRoomState state) {
-    return Container(
-      padding: EdgeInsets.all(AppSpacing.rem200),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Main game controls - responsive layout
-          LayoutBuilder(
-            builder: (context, constraints) {
-              // Use wrap for smaller screens, row for larger screens
-              if (constraints.maxWidth < 600) {
-                return Wrap(
-                  alignment: WrapAlignment.spaceEvenly,
-                  spacing: AppSpacing.rem100,
-                  runSpacing: AppSpacing.rem100,
-                  children: [
-                    _buildControlButton(
-                      'Undo',
-                      state.gameStarted && !state.gameEnded
-                          ? () =>
-                              context.read<GameRoomBloc>().add(UndoMoveEvent())
-                          : null,
-                    ),
-                    _buildControlButton(
-                      state.showingHint ? 'Hide Hint' : 'Hint',
-                      state.gameStarted &&
-                              !state.gameEnded &&
-                              !state.showingHint
-                          ? () => context
-                              .read<GameRoomBloc>()
-                              .add(RequestHintEvent())
-                          : state.showingHint
-                              ? () => context
-                                  .read<GameRoomBloc>()
-                                  .add(DismissHintEvent())
-                              : null,
-                    ),
-                    _buildControlButton(
-                      'Restart',
-                      state.gameStarted
-                          ? () => context
-                              .read<GameRoomBloc>()
-                              .add(RestartGameEvent())
-                          : null,
-                    ),
-                    if (state.gameEnded)
-                      _buildControlButton(
-                        'New Game',
-                        () => context
-                            .read<GameRoomBloc>()
-                            .add(RestartGameEvent()),
-                      ),
-                  ],
-                );
-              } else {
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Flexible(
-                      child: _buildControlButton(
-                        'Undo',
-                        state.gameStarted && !state.gameEnded
-                            ? () => context
-                                .read<GameRoomBloc>()
-                                .add(UndoMoveEvent())
-                            : null,
-                      ),
-                    ),
-                    SizedBox(width: AppSpacing.rem100),
-                    Flexible(
-                      child: _buildControlButton(
-                        state.showingHint ? 'Hide Hint' : 'Hint',
-                        state.gameStarted &&
-                                !state.gameEnded &&
-                                !state.showingHint
-                            ? () => context
-                                .read<GameRoomBloc>()
-                                .add(RequestHintEvent())
-                            : state.showingHint
-                                ? () => context
-                                    .read<GameRoomBloc>()
-                                    .add(DismissHintEvent())
-                                : null,
-                      ),
-                    ),
-                    SizedBox(width: AppSpacing.rem100),
-                    Flexible(
-                      child: _buildControlButton(
-                        'Restart',
-                        state.gameStarted
-                            ? () => context
-                                .read<GameRoomBloc>()
-                                .add(RestartGameEvent())
-                            : null,
-                      ),
-                    ),
-                    if (state.gameEnded) ...[
-                      SizedBox(width: AppSpacing.rem100),
-                      Flexible(
-                        child: _buildControlButton(
-                          'New Game',
-                          () => context
-                              .read<GameRoomBloc>()
-                              .add(RestartGameEvent()),
-                        ),
-                      ),
-                    ],
-                  ],
-                );
-              }
-            },
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Main game controls - horizontal row
+        Padding(
+          padding: EdgeInsets.all(AppSpacing.rem200),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: _buildControlButtons(context, state),
           ),
-
-          // Demo controls - only show in debug mode
-          // if (kDebugMode) ..._buildDemoControls(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildControlButton(String text, VoidCallback? onPressed) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(
-        minWidth: 80,
-        maxWidth: 150,
-      ),
-      child: CommonButton(
-        text: text,
-        onPressed: onPressed,
-        padding: EdgeInsets.symmetric(
-          vertical: AppSpacing.rem150,
-          horizontal: AppSpacing.rem100,
         ),
-      ),
+
+        // Debug controls - show in debug mode
+        // if (kDebugMode) ...[
+        //   SizedBox(height: AppSpacing.rem200),
+        //   _buildDebugControls(),
+        // ],
+      ],
     );
   }
 
-  List<Widget> _buildDemoControls() {
+  List<Widget> _buildControlButtons(BuildContext context, GameRoomState state) {
     return [
-      SizedBox(height: AppSpacing.rem200),
-      CommonText(
-        'Demo Controls (Debug Mode)',
-        style: TextStyle(
-          fontSize: 12,
-          color: _themeColor.textSecondaryColor,
+      Expanded(
+        child: _buildModernControlButton(
+          'Undo',
+          Icons.undo,
+          state.gameStarted && !state.gameEnded
+              ? () => context.read<GameRoomBloc>().add(UndoMoveEvent())
+              : null,
+          color: Colors.orange,
         ),
       ),
-      SizedBox(height: AppSpacing.rem100),
-      Wrap(
-        alignment: WrapAlignment.spaceEvenly,
-        spacing: AppSpacing.rem100,
-        runSpacing: AppSpacing.rem100,
+      SizedBox(width: AppSpacing.rem100),
+      Expanded(
+        child: _buildModernControlButton(
+          state.showingHint ? 'Hide Hint' : 'Hint',
+          state.showingHint ? Icons.visibility_off : Icons.lightbulb,
+          state.gameStarted && !state.gameEnded && !state.showingHint
+              ? () => context.read<GameRoomBloc>().add(RequestHintEvent())
+              : state.showingHint
+                  ? () => context.read<GameRoomBloc>().add(DismissHintEvent())
+                  : null,
+          color: Colors.blue,
+        ),
+      ),
+      SizedBox(width: AppSpacing.rem100),
+      Expanded(
+        child: _buildModernControlButton(
+          'Restart',
+          Icons.refresh,
+          state.gameStarted
+              ? () => context.read<GameRoomBloc>().add(RestartGameEvent())
+              : null,
+          color: Colors.green,
+        ),
+      ),
+      if (state.gameEnded) ...[
+        SizedBox(width: AppSpacing.rem100),
+        Expanded(
+          child: _buildModernControlButton(
+            'New Game',
+            Icons.add,
+            () => context.read<GameRoomBloc>().add(RestartGameEvent()),
+            color: _themeColor.primaryColor,
+          ),
+        ),
+      ],
+    ];
+  }
+
+  Widget _buildModernControlButton(
+      String text, IconData icon, VoidCallback? onPressed,
+      {required Color color}) {
+    final isEnabled = onPressed != null;
+
+    return Container(
+      height: 56,
+      decoration: BoxDecoration(
+        color: isEnabled
+            ? color.withOpacity(0.1)
+            : _themeColor.backgroundColor.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isEnabled
+              ? color.withOpacity(0.3)
+              : _themeColor.borderColor.withOpacity(0.3),
+          width: 1,
+        ),
+        boxShadow: isEnabled
+            ? [
+                BoxShadow(
+                  color: color.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.rem100),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  color: isEnabled ? color : _themeColor.textSecondaryColor,
+                  size: 20,
+                ),
+                SizedBox(height: AppSpacing.rem050),
+                CommonText(
+                  text,
+                  style: TextStyle(
+                    fontSize: AppFontSize.sm,
+                    fontWeight: AppFontWeight.medium,
+                    color: isEnabled ? color : _themeColor.textSecondaryColor,
+                  ),
+                  align: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDebugControls() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.rem200),
+      child: Column(
         children: [
-          SizedBox(
-            width: 120,
-            child: CommonButton(
-              text: 'White Wins',
-              onPressed: () => _simulateGameEnd('White'),
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.rem100),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.bug_report,
+                color: Colors.red,
+                size: 20,
+              ),
+              SizedBox(width: AppSpacing.rem100),
+              CommonText(
+                'Debug Controls',
+                style: TextStyle(
+                  fontSize: AppFontSize.md,
+                  fontWeight: AppFontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+            ],
           ),
-          SizedBox(
-            width: 120,
-            child: CommonButton(
-              text: 'Black Wins',
-              onPressed: () => _simulateGameEnd('Black'),
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.rem100),
-            ),
+          SizedBox(height: AppSpacing.rem150),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Expanded(
+                  child: _buildDebugButton(
+                      'White Wins', () => _simulateGameEnd('White'))),
+              SizedBox(width: AppSpacing.rem100),
+              Expanded(
+                  child: _buildDebugButton(
+                      'Black Wins', () => _simulateGameEnd('Black'))),
+              SizedBox(width: AppSpacing.rem100),
+              Expanded(
+                  child: _buildDebugButton(
+                      'Draw', () => _simulateGameEnd('Draw'))),
+            ],
           ),
-          SizedBox(
-            width: 120,
-            child: CommonButton(
-              text: 'Draw',
-              onPressed: () => _simulateGameEnd('Draw'),
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.rem100),
-            ),
-          ),
-          SizedBox(
-            width: 120,
-            child: CommonButton(
-              text: 'Clone Game',
-              onPressed: () => _createNewGameFromPrototype(),
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.rem100),
-            ),
-          ),
-          SizedBox(
-            width: 120,
-            child: CommonButton(
-              text: 'Swap Colors',
-              onPressed: () => _createNewGameWithSwappedColors(),
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.rem100),
-            ),
+          SizedBox(height: AppSpacing.rem100),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Expanded(
+                  child: _buildDebugButton(
+                      'Clone Game', () => _createNewGameFromPrototype())),
+              SizedBox(width: AppSpacing.rem100),
+              Expanded(
+                  child: _buildDebugButton(
+                      'Swap Colors', () => _createNewGameWithSwappedColors())),
+            ],
           ),
         ],
       ),
-    ];
+    );
+  }
+
+  Widget _buildDebugButton(String text, VoidCallback onPressed) {
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.red.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(8),
+          child: Center(
+            child: CommonText(
+              text,
+              style: TextStyle(
+                fontSize: AppFontSize.xs,
+                fontWeight: AppFontWeight.medium,
+                color: Colors.red,
+              ),
+              align: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -30,11 +30,7 @@ class _ChessBoardState extends State<ChessBoard> {
 
         return Column(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            // Game status info
-            _buildGameStatus(context, state),
-            SizedBox(height: AppSpacing.rem300), 
-            
+          children: [            
             // Chess board - responsive
             Flexible(
               child: LayoutBuilder(
@@ -159,6 +155,9 @@ class _ChessBoardState extends State<ChessBoard> {
                 },
               ),
             ),
+            // Game status info
+            SizedBox(height: AppSpacing.rem150),
+            _buildGameStatus(context, state),
           ],
         );
       },

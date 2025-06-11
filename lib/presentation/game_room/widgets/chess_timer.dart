@@ -27,79 +27,40 @@ class ChessTimer extends StatelessWidget {
         // Don't show timer if time control is disabled
         if (state.gameConfig?.timeControlMinutes == 0) {
           return const SizedBox.shrink();
-        }
-
-        return Container(
+        }        return Container(
           padding: EdgeInsets.symmetric(
             horizontal: AppSpacing.rem200,
             vertical: AppSpacing.rem100,
           ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // Use column layout for very small screens
-              if (constraints.maxWidth < 300) {
-                return Column(
-                  children: [
-                    _buildPlayerTimer(
-                      context,
-                      themeColor,
-                      'White',
-                      state.whiteTimeLeft,
-                      PieceColor.white,
-                      state.activeTimerColor,
-                      state.timerRunning,
-                      state.gameEnded,
-                      isCompact: true,
-                    ),
-                    SizedBox(height: AppSpacing.rem100),
-                    _buildTimerControls(context, themeColor, state, isCompact: true),
-                    SizedBox(height: AppSpacing.rem100),
-                    _buildPlayerTimer(
-                      context,
-                      themeColor,
-                      'Black',
-                      state.blackTimeLeft,
-                      PieceColor.black,
-                      state.activeTimerColor,
-                      state.timerRunning,
-                      state.gameEnded,
-                      isCompact: true,
-                    ),
-                  ],
-                );
-              } else {
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Flexible(
-                      child: _buildPlayerTimer(
-                        context,
-                        themeColor,
-                        'White',
-                        state.whiteTimeLeft,
-                        PieceColor.white,
-                        state.activeTimerColor,
-                        state.timerRunning,
-                        state.gameEnded,
-                      ),
-                    ),
-                    _buildTimerControls(context, themeColor, state),
-                    Flexible(
-                      child: _buildPlayerTimer(
-                        context,
-                        themeColor,
-                        'Black',
-                        state.blackTimeLeft,
-                        PieceColor.black,
-                        state.activeTimerColor,
-                        state.timerRunning,
-                        state.gameEnded,
-                      ),
-                    ),
-                  ],
-                );
-              }
-            },
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Flexible(
+                child: _buildPlayerTimer(
+                  context,
+                  themeColor,
+                  'White',
+                  state.whiteTimeLeft,
+                  PieceColor.white,
+                  state.activeTimerColor,
+                  state.timerRunning,
+                  state.gameEnded,
+                ),
+              ),
+              _buildTimerControls(context, themeColor, state),
+              Flexible(
+                child: _buildPlayerTimer(
+                  context,
+                  themeColor,
+                  'Black',
+                  state.blackTimeLeft,
+                  PieceColor.black,
+                  state.activeTimerColor,
+                  state.timerRunning,
+                  state.gameEnded,
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -179,7 +140,7 @@ class ChessTimer extends StatelessWidget {
                     CommonText(
                       timeText,
                       style: TextStyle(
-                        fontSize: AppFontSize.lg,
+                        fontSize: AppFontSize.xl,
                         fontWeight: AppFontWeight.bold,
                         color: textColor,
                         fontFamily: 'monospace',
