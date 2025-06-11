@@ -1,4 +1,3 @@
-import 'package:chess_game/core/common/button/common_button.dart';
 import 'package:chess_game/core/common/scaffold/common_app_bar.dart';
 import 'package:chess_game/core/common/scaffold/common_scaffold.dart';
 import 'package:chess_game/core/common/text/common_text.dart';
@@ -190,7 +189,6 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
     // Set initial player types based on isAIOpponent and default color choice
     _updatePlayerTypes();
   }
-
   @override
   Widget build(BuildContext context) {
     final String opponentType = widget.isAIOpponent ? 'AI' : 'Friend';
@@ -206,258 +204,473 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              _themeColor.surfaceColor,
+              _themeColor.surfaceColor.withOpacity(0.3),
               _themeColor.backgroundColor,
             ],
           ),
         ),
-        child: Padding(
-          padding: EdgeInsets.all(AppSpacing.rem300),
+        child: SafeArea(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Title
-              Center(
-                child: CommonText(
-                  'Configure Your Game',
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(AppSpacing.rem300),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Header with icon
+                      _buildHeaderSection(),
+                      SizedBox(height: AppSpacing.rem400),
+
+                      // Piece color selection
+                      _buildColorSelectionCard(),
+                      SizedBox(height: AppSpacing.rem300),
+
+                      // Time control settings
+                      _buildTimeControlCard(),
+
+                      // AI difficulty (only show if opponent is AI)
+                      if (widget.isAIOpponent) ...[
+                        SizedBox(height: AppSpacing.rem300),
+                        _buildAIDifficultyCard(),
+                      ],
+
+                      SizedBox(height: AppSpacing.rem400),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Start game button - fixed at bottom
+              Container(
+                padding: EdgeInsets.all(AppSpacing.rem300),
+                decoration: BoxDecoration(
+                  color: _themeColor.surfaceColor.withOpacity(0.9),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, -5),
+                    ),
+                  ],
+                ),
+                child: _buildStartGameButton(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderSection() {
+    return Container(
+      padding: EdgeInsets.all(AppSpacing.rem300),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            _themeColor.primaryColor.withOpacity(0.1),
+            _themeColor.surfaceColor.withOpacity(0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [
+                  _themeColor.primaryColor,
+                  _themeColor.primaryColor.withOpacity(0.7),
+                ],
+              ),
+            ),
+            child: Icon(
+              widget.isAIOpponent ? Icons.smart_toy : Icons.people,
+              size: 30,
+              color: Colors.white,
+            ),
+          ),
+          SizedBox(height: AppSpacing.rem200),
+          CommonText(
+            'Configure Your Game',
+            style: TextStyle(
+              fontSize: AppFontSize.xxl,
+              fontWeight: AppFontWeight.bold,
+              color: _themeColor.textPrimaryColor,
+            ),
+            align: TextAlign.center,
+          ),
+          SizedBox(height: AppSpacing.rem100),
+          CommonText(
+            'vs ${widget.isAIOpponent ? 'AI Player' : 'Friend'}',
+            style: TextStyle(
+              fontSize: AppFontSize.md,
+              color: _themeColor.textSecondaryColor,
+            ),
+            align: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildColorSelectionCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: _themeColor.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _themeColor.primaryColor.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(AppSpacing.rem250),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.palette,
+                  color: _themeColor.primaryColor,
+                  size: 24,
+                ),
+                SizedBox(width: AppSpacing.rem150),
+                CommonText(
+                  'Choose Your Color',
                   style: TextStyle(
                     fontSize: AppFontSize.xxl,
                     fontWeight: AppFontWeight.bold,
                     color: _themeColor.textPrimaryColor,
                   ),
                 ),
-              ),
-              SizedBox(height: AppSpacing.rem300),
+              ],
+            ),
+            SizedBox(height: AppSpacing.rem250),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildColorOption('White', true),
+                _buildColorOption('Black', false),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-              // Piece color selection
-              Card(
-                elevation: 4,
-                color: _themeColor.surfaceColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(
-                      color: _themeColor.primaryColor.withOpacity(0.3)),
+  Widget _buildTimeControlCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: _themeColor.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _themeColor.primaryColor.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(AppSpacing.rem250),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.access_time,
+                  color: _themeColor.primaryColor,
+                  size: 24,
                 ),
-                child: Padding(
-                  padding: EdgeInsets.all(AppSpacing.rem200),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CommonText(
-                        'Select your piece color:',
-                        style: TextStyle(
-                          fontSize: AppFontSize.md,
-                          fontWeight: AppFontWeight.bold,
-                          color: _themeColor.textPrimaryColor,
-                        ),
-                      ),
-                      SizedBox(height: AppSpacing.rem200),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _buildColorOption('White', true),
-                          _buildColorOption('Black', false),
-                        ],
-                      ),
-                    ],
+                SizedBox(width: AppSpacing.rem150),
+                CommonText(
+                  'Time Control',
+                  style: TextStyle(
+                    fontSize: AppFontSize.xxl,
+                    fontWeight: AppFontWeight.bold,
+                    color: _themeColor.textPrimaryColor,
                   ),
                 ),
+              ],
+            ),
+            SizedBox(height: AppSpacing.rem250),
+
+            // Time per move slider
+            _buildTimeSlider(
+              'Minutes per side',
+              _timeControlMinutes.toDouble(),
+              1,
+              30,
+              29,
+              '$_timeControlMinutes min',
+              _themeColor.primaryColor,
+              (value) {
+                setState(() {
+                  _timeControlMinutes = value.round();
+                  _gameConfigBuilder.setTimeControl(
+                      _timeControlMinutes, _incrementSeconds);
+                });
+              },
+            ),
+
+            SizedBox(height: AppSpacing.rem200),
+
+            // Increment slider
+            _buildTimeSlider(
+              'Increment per move',
+              _incrementSeconds.toDouble(),
+              0,
+              30,
+              30,
+              '$_incrementSeconds sec',
+              _themeColor.secondaryColor,
+              (value) {
+                setState(() {
+                  _incrementSeconds = value.round();
+                  _gameConfigBuilder.setTimeControl(
+                      _timeControlMinutes, _incrementSeconds);
+                });
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimeSlider(String title, double value, double min, double max,
+      int divisions, String label, Color color, Function(double) onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            CommonText(
+              title,
+              style: TextStyle(
+                fontSize: AppFontSize.md,
+                fontWeight: AppFontWeight.medium,
+                color: _themeColor.textPrimaryColor,
               ),
-              SizedBox(height: AppSpacing.rem300),
-
-              // Time control settings
-              Card(
-                elevation: 4,
-                color: _themeColor.surfaceColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(
-                      color: _themeColor.primaryColor.withOpacity(0.3)),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(AppSpacing.rem200),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CommonText(
-                        'Time Control:',
-                        style: TextStyle(
-                          fontSize: AppFontSize.md,
-                          fontWeight: AppFontWeight.bold,
-                          color: _themeColor.textPrimaryColor,
-                        ),
-                      ),
-                      SizedBox(height: AppSpacing.rem200),
-
-                      // Time per move slider
-                      Row(
-                        children: [
-                          CommonText(
-                            'Minutes per side: ',
-                            style: TextStyle(
-                              color: _themeColor.textPrimaryColor,
-                              fontWeight: AppFontWeight.medium,
-                            ),
-                          ),
-                          Expanded(
-                            child: SliderTheme(
-                              data: SliderTheme.of(context).copyWith(
-                                activeTrackColor: _themeColor.primaryColor,
-                                inactiveTrackColor:
-                                    _themeColor.primaryColor.withOpacity(0.3),
-                                thumbColor: _themeColor.primaryColor,
-                                overlayColor:
-                                    _themeColor.primaryColor.withOpacity(0.2),
-                                valueIndicatorColor: _themeColor.primaryVariant,
-                                valueIndicatorTextStyle: TextStyle(
-                                  color: _themeColor.onPrimaryColor,
-                                ),
-                              ),
-                              child: Slider(
-                                value: _timeControlMinutes.toDouble(),
-                                min: 1,
-                                max: 30,
-                                divisions: 29,
-                                label: '$_timeControlMinutes min',
-                                onChanged: (value) {
-                                  setState(() {
-                                    _timeControlMinutes = value.round();
-                                    _gameConfigBuilder.setTimeControl(
-                                        _timeControlMinutes, _incrementSeconds);
-                                  });
-                                },
-                              ),
-                            ),
-                          ),
-                          Container(
-                            width: 40,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: _themeColor.primaryColor,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: CommonText(
-                              '$_timeControlMinutes',
-                              style: TextStyle(
-                                color: _themeColor.onPrimaryColor,
-                                fontWeight: AppFontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // Increment slider
-                      Row(
-                        children: [
-                          CommonText(
-                            'Increment (sec): ',
-                            style: TextStyle(
-                              color: _themeColor.textPrimaryColor,
-                              fontWeight: AppFontWeight.medium,
-                            ),
-                          ),
-                          Expanded(
-                            child: SliderTheme(
-                              data: SliderTheme.of(context).copyWith(
-                                activeTrackColor: _themeColor.secondaryColor,
-                                inactiveTrackColor:
-                                    _themeColor.secondaryColor.withOpacity(0.3),
-                                thumbColor: _themeColor.secondaryColor,
-                                overlayColor:
-                                    _themeColor.secondaryColor.withOpacity(0.2),
-                                valueIndicatorColor: _themeColor.secondaryColor,
-                                valueIndicatorTextStyle: TextStyle(
-                                  color: _themeColor.onSecondaryColor,
-                                ),
-                              ),
-                              child: Slider(
-                                value: _incrementSeconds.toDouble(),
-                                min: 0,
-                                max: 30,
-                                divisions: 30,
-                                label: '$_incrementSeconds sec',
-                                onChanged: (value) {
-                                  setState(() {
-                                    _incrementSeconds = value.round();
-                                    _gameConfigBuilder.setTimeControl(
-                                        _timeControlMinutes, _incrementSeconds);
-                                  });
-                                },
-                              ),
-                            ),
-                          ),
-                          Container(
-                            width: 40,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: _themeColor.secondaryColor,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: CommonText(
-                              '$_incrementSeconds',
-                              style: TextStyle(
-                                color: _themeColor.onSecondaryColor,
-                                fontWeight: AppFontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+            ),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.rem150,
+                vertical: AppSpacing.rem050,
+              ),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: color.withOpacity(0.3),
+                  width: 1,
                 ),
               ),
+              child: CommonText(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: AppFontWeight.bold,
+                  fontSize: AppFontSize.sm,
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: AppSpacing.rem100),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: color,
+            inactiveTrackColor: color.withOpacity(0.2),
+            thumbColor: color,
+            overlayColor: color.withOpacity(0.2),
+            valueIndicatorColor: color,
+            valueIndicatorTextStyle: TextStyle(
+              color: Colors.white,
+              fontWeight: AppFontWeight.bold,
+            ),
+            trackHeight: 6,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12),
+          ),
+          child: Slider(
+            value: value,
+            min: min,
+            max: max,
+            divisions: divisions,
+            label: label,
+            onChanged: onChanged,
+          ),
+        ),
+      ],
+    );
+  }
 
-              // AI difficulty (only show if opponent is AI)
-              if (widget.isAIOpponent) ...[
-                SizedBox(height: AppSpacing.rem300),
-                Card(
-                  elevation: 4,
-                  color: _themeColor.surfaceColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                        color: _themeColor.primaryColor.withOpacity(0.3)),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(AppSpacing.rem200),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CommonText(
-                          'AI Difficulty Level:',
-                          style: TextStyle(
-                            fontSize: AppFontSize.md,
-                            fontWeight: AppFontWeight.bold,
-                            color: _themeColor.textPrimaryColor,
-                          ),
-                        ),
-                        SizedBox(height: AppSpacing.rem200),
-                        Center(
-                          child: CommonText(
-                            _getDifficultyText(widget.aiDifficulty ?? 3),
-                            style: TextStyle(
-                              color: _themeColor.primaryColor,
-                              fontSize: AppFontSize.lg,
-                              fontWeight: AppFontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
+  Widget _buildAIDifficultyCard() {
+    final difficultyLevel = widget.aiDifficulty ?? 3;
+    final difficultyText = _getDifficultyText(difficultyLevel);
+
+    Color getDifficultyColor() {
+      if (difficultyLevel <= 3) return Colors.green;
+      if (difficultyLevel <= 7) return Colors.orange;
+      return Colors.red;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _themeColor.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: getDifficultyColor().withOpacity(0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: getDifficultyColor().withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(AppSpacing.rem250),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.psychology,
+                  color: getDifficultyColor(),
+                  size: 24,
+                ),
+                SizedBox(width: AppSpacing.rem150),
+                Expanded(
+                  child: CommonText(
+                    'AI Difficulty Level',
+                    style: TextStyle(
+                      fontSize: AppFontSize.xxl,
+                      fontWeight: AppFontWeight.bold,
+                      color: _themeColor.textPrimaryColor,
                     ),
                   ),
                 ),
               ],
-              const Spacer(),
-
-              // Start game button
-              CommonButton(
-                text: 'Start Game',
-                onPressed: _createGameAndNavigate,
-                padding: EdgeInsets.symmetric(vertical: AppSpacing.rem200),
+            ),
+            SizedBox(height: AppSpacing.rem200),
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(AppSpacing.rem200),
+              decoration: BoxDecoration(
+                color: getDifficultyColor().withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: getDifficultyColor().withOpacity(0.3),
+                  width: 1,
+                ),
               ),
-            ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CommonText(
+                    difficultyText,
+                    style: TextStyle(
+                      fontSize: AppFontSize.xl,
+                      fontWeight: AppFontWeight.bold,
+                      color: getDifficultyColor(),
+                    ),
+                    align: TextAlign.center,
+                  ),
+                  SizedBox(height: AppSpacing.rem050),
+                  CommonText(
+                    'Level $difficultyLevel',
+                    style: TextStyle(
+                      fontSize: AppFontSize.sm,
+                      color: _themeColor.textSecondaryColor,
+                    ),
+                    align: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStartGameButton() {
+    return Container(
+      width: double.infinity,
+      height: 56,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            _themeColor.primaryColor,
+            _themeColor.primaryColor.withOpacity(0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _themeColor.primaryColor.withOpacity(0.4),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _createGameAndNavigate,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.rem300),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.play_arrow,
+                  color: Colors.white,
+                  size: 28,
+                ),
+                SizedBox(width: AppSpacing.rem150),
+                CommonText(
+                  'Start Game',
+                  style: TextStyle(
+                    fontSize: AppFontSize.xxl,
+                    fontWeight: AppFontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

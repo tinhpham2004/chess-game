@@ -30,8 +30,6 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   void initState() {
     super.initState();
     _loadMatchHistory();
-
-    // Debug: Print database information
     _debugPrintDatabaseInfo();
   }
 
@@ -40,19 +38,15 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
       final dbProvider = getIt<DBProvider>();
       final db = dbProvider.database;
 
-      // Check if the match_history table exists
-      final tables = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='match_history';");
-
+      final tables = await db.rawQuery(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='match_history';");
       print('Database tables: $tables');
 
       if (tables.isNotEmpty) {
-        // Count records in the match_history table
         final countResult = await db.rawQuery('SELECT COUNT(*) as count FROM match_history');
         final count = Sqflite.firstIntValue(countResult) ?? 0;
-
         print('Number of records in match_history table: $count');
 
-        // Get all records for debugging
         if (count > 0) {
           final records = await db.query('match_history');
           print('Match history records: $records');
@@ -105,141 +99,488 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
       appBar: CommonAppBar(
         title: 'Match History',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadMatchHistory,
-            tooltip: 'Refresh match history',
+          Container(
+            margin: EdgeInsets.only(right: AppSpacing.rem150),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _themeColor.primaryColor.withOpacity(0.1),
+            ),
+            child: IconButton(
+              icon: Icon(
+                Icons.refresh,
+                color: _themeColor.primaryColor,
+              ),
+              onPressed: _loadMatchHistory,
+              tooltip: 'Refresh match history',
+            ),
           ),
         ],
       ),
       backgroundColor: _themeColor.backgroundColor,
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _matchHistory.isEmpty
-              ? Center(
-                  child: CommonText(
-                    'No matches found',
-                    style: TextStyle(
-                      fontSize: AppFontSize.lg,
-                      color: _themeColor.textPrimaryColor,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              _themeColor.surfaceColor.withOpacity(0.3),
+              _themeColor.backgroundColor,
+            ],
+          ),
+        ),
+        child: _isLoading
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                          _themeColor.primaryColor),
                     ),
+                    SizedBox(height: AppSpacing.rem200),
+                    CommonText(
+                      'Loading match history...',
+                      style: TextStyle(
+                        color: _themeColor.textSecondaryColor,
+                        fontSize: AppFontSize.md,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : _matchHistory.isEmpty
+                ? _buildEmptyState()
+                : _buildMatchList(),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(AppSpacing.rem400),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _themeColor.surfaceColor,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
                   ),
-                )
-              : Padding(
-                  padding: EdgeInsets.all(AppSpacing.rem100),
-                  child: ListView.builder(
-                    itemCount: _matchHistory.length,
-                    itemBuilder: (context, index) {
-                      final match = _matchHistory[index];
-                      return Card(
-                        margin: EdgeInsets.symmetric(vertical: AppSpacing.rem100),
-                        elevation: 2,
-                        child: Padding(
-                          padding: EdgeInsets.all(AppSpacing.rem200),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  CommonText(
-                                    'Match #${match.id}',
-                                    style: TextStyle(
-                                      fontWeight: AppFontWeight.bold,
-                                      fontSize: AppFontSize.md,
-                                      color: _themeColor.textPrimaryColor,
-                                    ),
-                                  ),
-                                  CommonText(
-                                    _formatDate(match.date),
-                                    style: TextStyle(
-                                      color: _themeColor.textSecondaryColor,
-                                      fontSize: AppFontSize.sm,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const Divider(),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      CommonText(
-                                        'White: ${match.whitePlayer}',
-                                        style: TextStyle(
-                                          fontWeight: match.winner == 'white' ? AppFontWeight.bold : AppFontWeight.regular,
-                                          color: _themeColor.textPrimaryColor,
-                                        ),
-                                      ),
-                                      SizedBox(height: AppSpacing.rem050),
-                                      CommonText(
-                                        'Black: ${match.blackPlayer}',
-                                        style: TextStyle(
-                                          fontWeight: match.winner == 'black' ? AppFontWeight.bold : AppFontWeight.regular,
-                                          color: _themeColor.textPrimaryColor,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: AppSpacing.rem150,
-                                      vertical: AppSpacing.rem075,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: match.winner == 'draw' ? Colors.amber[100] : Colors.green[100],
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: CommonText(
-                                      _getResultText(match.winner, match.whitePlayer, match.blackPlayer),
-                                      style: TextStyle(
-                                        color: match.winner == 'draw' ? Colors.amber[900] : Colors.green[900],
-                                        fontWeight: AppFontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (match.isAiOpponent)
-                                Padding(
-                                  padding: EdgeInsets.only(top: AppSpacing.rem100),
-                                  child: CommonText(
-                                    'Opponent: AI (Difficulty: ${match.aiDifficulty})',
-                                    style: TextStyle(
-                                      fontStyle: FontStyle.italic,
-                                      color: _themeColor.textSecondaryColor,
-                                    ),
-                                  ),
-                                ),
-                              SizedBox(height: AppSpacing.rem100),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  TextButton.icon(
-                                    icon: const Icon(Icons.visibility),
-                                    label: CommonText('View Details'),
-                                    onPressed: () {
-                                      // Open match details or replay screen
-                                    },
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete_outline),
-                                    onPressed: () async {
-                                      await _matchHistoryRepository.deleteMatchHistory(match.id);
-                                      _loadMatchHistory();
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ],
+                ],
+              ),
+              child: Icon(
+                Icons.history,
+                size: 60,
+                color: _themeColor.primaryColor.withOpacity(0.5),
+              ),
+            ),
+            SizedBox(height: AppSpacing.rem300),
+            CommonText(
+              'No matches yet',
+              style: TextStyle(
+                fontSize: AppFontSize.xl,
+                fontWeight: AppFontWeight.bold,
+                color: _themeColor.textPrimaryColor,
+              ),
+            ),
+            SizedBox(height: AppSpacing.rem150),
+            CommonText(
+              'Start playing games to see your match history here',
+              style: TextStyle(
+                fontSize: AppFontSize.md,
+                color: _themeColor.textSecondaryColor,
+              ),
+              align: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMatchList() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.rem200),
+      child: ListView.builder(
+        itemCount: _matchHistory.length,
+        itemBuilder: (context, index) {
+          final match = _matchHistory[index];
+          return _buildMatchCard(match);
+        },
+      ),
+    );
+  }
+
+  Widget _buildMatchCard(MatchHistoryEntity match) {
+    Color getResultColor() {
+      if (match.winner == 'draw') return Colors.amber;
+      return Colors.green;
+    }
+
+    IconData getResultIcon() {
+      if (match.winner == 'draw') return Icons.handshake;
+      return Icons.emoji_events;
+    }
+
+    return Container(
+      margin: EdgeInsets.only(bottom: AppSpacing.rem200),
+      decoration: BoxDecoration(
+        color: _themeColor.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: getResultColor().withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(AppSpacing.rem200),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [
+                            getResultColor(),
+                            getResultColor().withOpacity(0.7),
+                          ],
+                        ),
+                      ),
+                      child: Icon(
+                        getResultIcon(),
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: AppSpacing.rem150),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CommonText(
+                          'Match #${match.id}',
+                          style: TextStyle(
+                            fontWeight: AppFontWeight.bold,
+                            color: _themeColor.textPrimaryColor,
                           ),
                         ),
-                      );
-                    },
+                        CommonText(
+                          _formatDate(match.date),
+                          style: TextStyle(
+                            color: _themeColor.textSecondaryColor,
+                            fontSize: AppFontSize.sm,
+                          ),
+                        ),
+                        SizedBox(height: AppSpacing.rem075),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacing.rem150,
+                            vertical: AppSpacing.rem075,
+                          ),
+                          decoration: BoxDecoration(
+                            color: getResultColor().withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: getResultColor().withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: CommonText(
+                            _getResultText(match.winner, match.whitePlayer,
+                                match.blackPlayer),
+                            style: TextStyle(
+                              fontWeight: AppFontWeight.bold,
+                              fontSize: AppFontSize.sm,
+                              color: getResultColor(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            SizedBox(height: AppSpacing.rem200),
+
+            // Players row
+            Container(
+              padding: EdgeInsets.all(AppSpacing.rem150),
+              decoration: BoxDecoration(
+                color: _themeColor.backgroundColor.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  // White player
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            border: Border.all(
+                              color: _themeColor.borderColor,
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: AppSpacing.rem100),
+                        Expanded(
+                          child: CommonText(
+                            match.whitePlayer,
+                            style: TextStyle(
+                              fontSize: AppFontSize.md,
+                              fontWeight: AppFontWeight.medium,
+                              color: _themeColor.textPrimaryColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // VS indicator
+                  Container(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: AppSpacing.rem100),
+                    child: CommonText(
+                      'VS',
+                      style: TextStyle(
+                        fontSize: AppFontSize.sm,
+                        fontWeight: AppFontWeight.bold,
+                        color: _themeColor.textSecondaryColor,
+                      ),
+                    ),
+                  ),
+
+                  // Black player
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.black,
+                            border: Border.all(
+                              color: _themeColor.borderColor,
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: AppSpacing.rem100),
+                        Expanded(
+                          child: CommonText(
+                            match.blackPlayer,
+                            style: TextStyle(
+                              fontSize: AppFontSize.md,
+                              fontWeight: AppFontWeight.medium,
+                              color: _themeColor.textPrimaryColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // AI info
+            if (match.isAiOpponent) ...[
+              SizedBox(height: AppSpacing.rem150),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.rem150,
+                  vertical: AppSpacing.rem075,
+                ),
+                decoration: BoxDecoration(
+                  color: _themeColor.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.smart_toy,
+                      size: 16,
+                      color: _themeColor.primaryColor,
+                    ),
+                    SizedBox(width: AppSpacing.rem075),
+                    CommonText(
+                      'AI Opponent (Level ${match.aiDifficulty})',
+                      style: TextStyle(
+                        fontSize: AppFontSize.sm,
+                        fontWeight: AppFontWeight.medium,
+                        color: _themeColor.primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            SizedBox(height: AppSpacing.rem150),
+
+            // Action buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                _buildActionButton(
+                  'View Details',
+                  Icons.visibility,
+                  _themeColor.primaryColor,
+                  () {
+                    // Open match details or replay screen
+                  },
+                ),
+                SizedBox(width: AppSpacing.rem100),
+                _buildActionButton(
+                  'Delete',
+                  Icons.delete_outline,
+                  Colors.red,
+                  () async {
+                    await _showDeleteConfirmation(match);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton(
+      String label, IconData icon, Color color, VoidCallback onPressed) {
+    return Container(
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.rem150,
+              vertical: AppSpacing.rem100,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 16,
+                  color: color,
+                ),
+                SizedBox(width: AppSpacing.rem075),
+                CommonText(
+                  label,
+                  style: TextStyle(
+                    fontSize: AppFontSize.sm,
+                    fontWeight: AppFontWeight.medium,
+                    color: color,
                   ),
                 ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
+  }
+
+  Future<void> _showDeleteConfirmation(MatchHistoryEntity match) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: CommonText(
+            'Delete Match',
+            style: TextStyle(
+              fontWeight: AppFontWeight.bold,
+              color: _themeColor.textPrimaryColor,
+            ),
+          ),
+          content: CommonText(
+            'Are you sure you want to delete this match from history?',
+            style: TextStyle(
+              color: _themeColor.textSecondaryColor,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: CommonText(
+                'Cancel',
+                style: TextStyle(
+                  color: _themeColor.textSecondaryColor,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: CommonText(
+                'Delete',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: AppFontWeight.medium,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == true) {
+      await _matchHistoryRepository.deleteMatchHistory(match.id);
+      _loadMatchHistory();
+    }
   }
 }
