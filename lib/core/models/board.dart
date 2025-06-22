@@ -24,9 +24,9 @@ class Board implements IBoardPublisher {
   }
 
   @override
-  void notifySubscribers() {
+  void notifySubscribers(Board board) {
     for (final observer in _observers) {
-      observer.update();
+      observer.update(board);
     }
   }
 
@@ -45,7 +45,7 @@ class Board implements IBoardPublisher {
     _board[to.row][to.col] = piece;
     _board[from.row][from.col] = null;
 
-    notifySubscribers();
+    notifySubscribers(this);
     return true;
   }
 
@@ -63,7 +63,7 @@ class Board implements IBoardPublisher {
 
   void restoreFromMemento(BoardMemento memento) {
     _restoreBoard(memento.getState());
-    notifySubscribers();
+    notifySubscribers(this);
   }
 
   List<List<ChessPiece?>> _deepCopyBoard() {
