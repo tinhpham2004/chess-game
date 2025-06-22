@@ -1,0 +1,219 @@
+classDiagram
+    note "Observer Pattern Implementation for Chess Game Board Updates"
+    
+    %% Observer Interface (Subscriber)
+    class IBoardSubscriber {
+        <<interface>>
+        +update(Board board)*
+    }
+    
+    %% Subject Interface (Publisher)
+    class IBoardPublisher {
+        <<interface>>
+        +subscribe(IBoardSubscriber observer)*
+        +unsubscribe(IBoardSubscriber observer)*
+        +notifySubscribers(Board board)*
+    }
+    
+    %% Concrete Subject
+    class Board {
+        -List~List~ChessPiece~~ _board
+        -List~IBoardSubscriber~ _observers
+        +Board()
+        +subscribe(IBoardSubscriber observer)
+        +unsubscribe(IBoardSubscriber observer)
+        +notifySubscribers(Board board)
+        +getPieceAt(Position position) ChessPiece
+        +movePiece(Position from, Position to) bool
+        +createMemento() BoardMemento
+        +restoreFromMemento(BoardMemento memento)
+        -_isValidPosition(Position position) bool
+        -_deepCopyBoard() List~List~ChessPiece~~
+        -_restoreBoard(List~List~ChessPiece~~ state)
+    }
+    
+    %% Context Class that manages observers
+    class GameRoom {
+        -String id
+        -Board _board
+        -GameStateContext _stateContext
+        -CommandInvoker _commandInvoker
+        -MoveValidator _moveValidator
+        -GameConfig _config
+        -BoardMemento _initialState
+        -bool _whitesTurn
+        -ChessAIPlayer _aiPlayer
+        +GameRoom(String id, GameConfig config)
+        +addObserver(IBoardSubscriber observer)
+        +removeObserver(IBoardSubscriber observer)
+        +movePiece(Position from, Position to) bool
+        -_setupGame()
+        -_makeAIMoveIfNeeded()
+        -_getAllPieces() List~ChessPiece~
+    }
+    
+    %% Concrete Observers (Examples that could implement the interface)
+    class MoveHistoryObserver {
+        -List~String~ _moveHistory
+        +MoveHistoryObserver()
+        +update(Board board)
+        +getMoveHistory() List~String~
+        +clearHistory()
+        -_recordMove(Position from, Position to)
+    }
+    
+    class GameStatisticsObserver {
+        -int _totalMoves
+        -int _capturedPieces
+        -Duration _gameTime
+        -Map~PieceType,int~ _pieceMoveCounts
+        +GameStatisticsObserver()
+        +update(Board board)
+        +getTotalMoves() int
+        +getCapturedPieces() int
+        +getGameTime() Duration
+        +getPieceMoveCounts() Map~PieceType,int~
+        +resetStatistics()
+        -_updateStatistics(Board board)
+    }
+    
+    class BoardEvaluationObserver {
+        -double _currentEvaluation
+        -List~double~ _evaluationHistory
+        +BoardEvaluationObserver()
+        +update(Board board)
+        +getCurrentEvaluation() double
+        +getEvaluationHistory() List~double~
+        +getPositionStrength(PieceColor color) double
+        -_evaluatePosition(Board board) double
+        -_calculateMaterialBalance(Board board) double
+        -_calculatePositionalFactors(Board board) double
+    }
+    
+    class GameTimerObserver {
+        -Duration _whiteTime
+        -Duration _blackTime
+        -bool _isRunning
+        -PieceColor _activePlayer
+        +GameTimerObserver(Duration initialTime)
+        +update(Board board)
+        +startTimer(PieceColor player)
+        +pauseTimer()
+        +getTimeLeft(PieceColor player) Duration
+        +isTimeExpired(PieceColor player) bool
+        -_switchActivePlayer()
+        -_updateTimers()
+    }
+    
+    class GameLoggerObserver {
+        -List~String~ _gameLog
+        -String _gameId
+        +GameLoggerObserver(String gameId)
+        +update(Board board)
+        +getGameLog() List~String~
+        +saveLogToFile(String filename)
+        +exportToPGN() String
+        -_logBoardState(Board board)
+        -_generateLogEntry(Board board) String
+    }
+    
+    %% Flutter BLoC Observer (External)
+    class AppBlocObserver {
+        +onEvent(Bloc bloc, Object event)
+        +onTransition(Bloc bloc, Transition transition)
+        +onError(BlocBase bloc, Object error, StackTrace stackTrace)
+    }
+    
+    class BlocObserver {
+        <<external>>
+        +onEvent(Bloc bloc, Object event)*
+        +onTransition(Bloc bloc, Transition transition)*
+        +onError(BlocBase bloc, Object error, StackTrace stackTrace)*
+    }
+    
+    %% Supporting Classes
+    class BoardMemento {
+        -List~List~ChessPiece~~ _state
+        +BoardMemento(List~List~ChessPiece~~ state)
+        +getState() List~List~ChessPiece~~
+    }
+    
+    class Position {
+        +int x
+        +int y
+        +int row
+        +int col
+        +Position(int x, int y)
+    }
+    
+    class ChessPiece {
+        <<abstract>>
+        +PieceColor color
+        +PieceType type
+        +Position position
+        +clone() ChessPiece*
+    }
+    
+    class PieceColor {
+        <<enumeration>>
+        white
+        black
+    }
+    
+    class PieceType {
+        <<enumeration>>
+        pawn
+        rook
+        knight
+        bishop
+        queen
+        king
+    }
+    
+    class GameConfig {
+        +bool isWhitePlayerAI
+        +bool isBlackPlayerAI
+        +int aiDifficultyLevel
+        +Duration timeControl
+    }
+    
+    %% Observer Pattern Relationships
+    Board ..|> IBoardPublisher : implements
+    MoveHistoryObserver ..|> IBoardSubscriber : implements
+    GameStatisticsObserver ..|> IBoardSubscriber : implements
+    BoardEvaluationObserver ..|> IBoardSubscriber : implements
+    GameTimerObserver ..|> IBoardSubscriber : implements
+    GameLoggerObserver ..|> IBoardSubscriber : implements
+    
+    %% Subject-Observer relationship
+    IBoardPublisher --> IBoardSubscriber : notifies
+    Board o-- IBoardSubscriber : _observers
+    
+    %% Context relationships
+    GameRoom --> Board : manages
+    GameRoom ..> IBoardSubscriber : registers/unregisters
+    
+    %% Supporting relationships
+    Board --> BoardMemento : creates
+    Board --> ChessPiece : contains
+    Board --> Position : uses
+    GameRoom --> GameConfig : uses
+    ChessPiece --> Position : has
+    ChessPiece --> PieceColor : has
+    ChessPiece --> PieceType : has
+    
+    %% Observer data dependencies
+    MoveHistoryObserver ..> Position : tracks
+    GameStatisticsObserver ..> PieceType : counts
+    GameStatisticsObserver ..> PieceColor : analyzes
+    BoardEvaluationObserver ..> PieceColor : evaluates
+    GameTimerObserver ..> PieceColor : times
+    
+    %% BLoC Observer (separate pattern)
+    AppBlocObserver --|> BlocObserver : extends
+    
+    %% Pattern Notes
+    note for IBoardSubscriber "Observer interface - receives board updates"
+    note for IBoardPublisher "Subject interface - manages observers and notifications"
+    note for Board "Concrete subject - notifies observers when board state changes"
+    note for GameRoom "Context that coordinates observer registration"

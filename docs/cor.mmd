@@ -1,0 +1,168 @@
+classDiagram
+    note "Chain of Responsibility Pattern Implementation for Chess Move Validation"
+    
+    %% Context Class for FIDE Rules
+    class FIDERuleContext {
+        +List~String~ moveHistory
+        +String lastDoubleMovePawn
+        +int fiftyMoveCounter
+        +List~String~ positionHistory
+        +int moveNumber
+        +bool isWhitesTurn
+        +FIDERuleContext(List~String~ moveHistory, String lastDoubleMovePawn, int fiftyMoveCounter, List~String~ positionHistory, int moveNumber, bool isWhitesTurn)
+    }
+    
+    %% Abstract Handler
+    class MoveValidator {
+        <<abstract>>
+        #MoveValidator _nextValidator
+        +setNext(MoveValidator validator) MoveValidator
+        +validate(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces, FIDERuleContext context) bool
+        +handleValidation(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces, FIDERuleContext context) bool*
+    }
+    
+    %% Concrete Handlers - Basic Validators
+    class ActualMoveValidator {
+        +handleValidation(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces, FIDERuleContext context) bool
+    }
+    
+    class BoundsValidator {
+        +handleValidation(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces, FIDERuleContext context) bool
+    }
+    
+    class OccupancyValidator {
+        +handleValidation(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces, FIDERuleContext context) bool
+    }
+    
+    class PieceMovementValidator {
+        +handleValidation(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces, FIDERuleContext context) bool
+        -_validatePawnMove(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces) bool
+        -_validateRookMove(Position from, Position to, List~ChessPiece~ allPieces) bool
+        -_validateKnightMove(Position from, Position to) bool
+        -_validateBishopMove(Position from, Position to, List~ChessPiece~ allPieces) bool
+        -_validateQueenMove(Position from, Position to, List~ChessPiece~ allPieces) bool
+        -_validateKingMove(Position from, Position to) bool
+    }
+    
+    %% Concrete Handlers - Special Move Validators
+    class CastlingValidator {
+        +handleValidation(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces, FIDERuleContext context) bool
+        -_validateCastlingConditions(ChessPiece king, Position from, Position to, List~ChessPiece~ allPieces) bool
+    }
+    
+    class EnPassantValidator {
+        +handleValidation(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces, FIDERuleContext context) bool
+        -_validateEnPassantCapture(ChessPiece pawn, Position from, Position to, FIDERuleContext context) bool
+    }
+    
+    class PawnPromotionValidator {
+        +handleValidation(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces, FIDERuleContext context) bool
+    }
+    
+    %% Concrete Handlers - Safety Validators
+    class AbsolutePinValidator {
+        +handleValidation(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces, FIDERuleContext context) bool
+        -_isPiecePinned(ChessPiece piece, List~ChessPiece~ allPieces) bool
+    }
+    
+    class KingSafetyValidator {
+        +handleValidation(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces, FIDERuleContext context) bool
+        -_isKingInCheck(PieceColor kingColor, List~ChessPiece~ pieces) bool
+        -_isSquareUnderAttack(Position square, PieceColor attackingColor, List~ChessPiece~ pieces) bool
+    }
+    
+    %% Concrete Handlers - FIDE Rule Validators
+    class FiftyMoveRuleValidator {
+        +handleValidation(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces, FIDERuleContext context) bool
+    }
+    
+    class ThreefoldRepetitionValidator {
+        +handleValidation(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces, FIDERuleContext context) bool
+    }
+    
+    class InsufficientMaterialValidator {
+        +handleValidation(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces, FIDERuleContext context) bool
+    }
+    
+    class StalemateValidator {
+        +handleValidation(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces, FIDERuleContext context) bool
+    }
+    
+    class CheckmateValidator {
+        +handleValidation(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces, FIDERuleContext context) bool
+    }
+    
+    %% Chain Factory
+    class MoveValidatorChain {
+        <<utility>>
+        +createCompleteChain() MoveValidator$
+        +createBasicChain() MoveValidator$
+        +createAIChain() MoveValidator$
+        +createFideRuleValidators() Map~String,MoveValidator~$
+    }
+    
+    %% Client/Wrapper Class
+    class GameRoomMoveValidator {
+        -MoveValidator _validatorChain
+        -MoveValidator _aiValidatorChain
+        -Map~String,MoveValidator~ _fideValidators
+        +GameRoomMoveValidator()
+        +validateMove(ChessPiece piece, Position from, Position to, List~ChessPiece~ allPieces, bool isAI, FIDERuleContext context) bool
+        +getValidMovesForPiece(ChessPiece piece, List~ChessPiece~ allPieces, FIDERuleContext context) List~Position~
+        +canClaimFiftyMoveRule(FIDERuleContext context) bool
+        +canClaimThreefoldRepetition(FIDERuleContext context) bool
+        +isInsufficientMaterial(List~ChessPiece~ pieces) bool
+        +isStalemate(List~ChessPiece~ pieces, PieceColor color) bool
+        +isCheckmate(List~ChessPiece~ pieces, PieceColor color) bool
+    }
+    
+    %% Supporting Model Classes
+    class ChessPiece {
+        <<abstract>>
+        +PieceColor color
+        +PieceType type
+        +Position position
+        +clone() ChessPiece*
+    }
+    
+    class Position {
+        +int x
+        +int y
+        +Position(int x, int y)
+        +row int
+        +col int
+    }
+    
+    %% Chain of Responsibility Relationships
+    ActualMoveValidator --|> MoveValidator : extends
+    BoundsValidator --|> MoveValidator : extends
+    OccupancyValidator --|> MoveValidator : extends
+    PieceMovementValidator --|> MoveValidator : extends
+    CastlingValidator --|> MoveValidator : extends
+    EnPassantValidator --|> MoveValidator : extends
+    PawnPromotionValidator --|> MoveValidator : extends
+    AbsolutePinValidator --|> MoveValidator : extends
+    KingSafetyValidator --|> MoveValidator : extends
+    FiftyMoveRuleValidator --|> MoveValidator : extends
+    ThreefoldRepetitionValidator --|> MoveValidator : extends
+    InsufficientMaterialValidator --|> MoveValidator : extends
+    StalemateValidator --|> MoveValidator : extends
+    CheckmateValidator --|> MoveValidator : extends
+    
+    %% Chain Linkage (Self-referential)
+    MoveValidator o-- MoveValidator : _nextValidator
+    
+    %% Factory and Client Relationships
+    MoveValidatorChain ..> MoveValidator : creates
+    GameRoomMoveValidator --> MoveValidator : uses
+    GameRoomMoveValidator --> MoveValidatorChain : uses
+    
+    %% Context Usage
+    MoveValidator ..> FIDERuleContext : uses
+    MoveValidator ..> ChessPiece : validates
+    MoveValidator ..> Position : validates
+    
+    %% Chain Flow Notes
+    note for MoveValidator "Abstract handler that chains validation requests"
+    note for MoveValidatorChain "Factory for creating different validator chains"
+    note for GameRoomMoveValidator "Client that uses validator chains for game logic"

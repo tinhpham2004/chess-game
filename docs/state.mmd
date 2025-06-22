@@ -1,0 +1,119 @@
+classDiagram
+    note "State Pattern Implementation for Chess Game"
+    
+    %% Context class
+    class GameStateContext {
+        -GameState _state
+        +GameStateContext()
+        +changeState(GameState state)
+        -_isValidTransition(GameState newState) bool
+        +canMove() bool
+        +canUndo() bool
+        +isPaused() bool
+        +isFinished() bool
+        +movePiece(ChessPiece piece, Position destination) bool
+    }
+    
+    %% Abstract State
+    class GameState {
+        <<abstract>>
+        +GameStateContext context
+        +GameState(GameStateContext context)
+        +canMove() bool*
+        +canUndo() bool*
+        +isPaused() bool*
+        +isFinished() bool*
+        +movePiece(ChessPiece piece, Position destination) bool*
+    }
+    
+    %% Concrete States
+    class WaitingState {
+        +WaitingState(GameStateContext context)
+        +canMove() bool
+        +canUndo() bool
+        +isPaused() bool
+        +isFinished() bool
+        +movePiece(ChessPiece piece, Position destination) bool
+    }
+    
+    class PlayingState {
+        +PlayingState(GameStateContext context)
+        +canMove() bool
+        +canUndo() bool
+        +isPaused() bool
+        +isFinished() bool
+        +movePiece(ChessPiece piece, Position destination) bool
+    }
+    
+    class PausedState {
+        +PausedState(GameStateContext context)
+        +canMove() bool
+        +canUndo() bool
+        +isPaused() bool
+        +isFinished() bool
+        +movePiece(ChessPiece piece, Position destination) bool
+    }
+    
+    class FinishedState {
+        +FinishedState(GameStateContext context)
+        +canMove() bool
+        +canUndo() bool
+        +isPaused() bool
+        +isFinished() bool
+        +movePiece(ChessPiece piece, Position destination) bool
+    }
+    
+    %% Supporting classes
+    class ChessPiece {
+        <<abstract>>
+        +PieceColor color
+        +PieceType type
+        +Position position
+        +clone() ChessPiece*
+        +isValidMove(Position from, Position to, List~ChessPiece~ pieces) bool*
+        +getPossibleMoves(List~ChessPiece~ pieces) List~Position~*
+    }
+    
+    class Position {
+        +int x
+        +int y
+        +Position(int x, int y)
+        +clone() Position
+        +algebraic String
+        +row int
+        +col int
+    }
+    
+    class PieceType {
+        <<enumeration>>
+        pawn
+        rook
+        knight
+        bishop
+        queen
+        king
+    }
+    
+    class PieceColor {
+        <<enumeration>>
+        white
+        black
+    }
+    
+    %% Relationships
+    GameStateContext o-- GameState : maintains
+    GameState <|-- WaitingState
+    GameState <|-- PlayingState
+    GameState <|-- PausedState
+    GameState <|-- FinishedState
+    GameStateContext ..> ChessPiece : uses
+    GameStateContext ..> Position : uses
+    ChessPiece --> Position : has
+    ChessPiece --> PieceType : has
+    ChessPiece --> PieceColor : has
+    
+    %% State transitions
+    WaitingState ..> PlayingState : startGame
+    PlayingState ..> PausedState : pauseGame
+    PlayingState ..> FinishedState : gameOver
+    PausedState ..> PlayingState : resumeGame

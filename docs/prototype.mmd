@@ -1,0 +1,30 @@
+classDiagram
+    %% Abstract Prototype class
+    class Prototype {
+        <<abstract>>
+        +clone() Prototype*
+    }
+    
+    %% Concrete implementation
+    class GameConfig {
+        -int timeControlMinutes
+        -int incrementSeconds
+        -bool isWhitePlayerAI
+        -bool isBlackPlayerAI
+        -int aiDifficultyLevel
+        -bool soundEnabled
+        
+        +GameConfig(timeControlMinutes: int, incrementSeconds: int, isWhitePlayerAI: bool, isBlackPlayerAI: bool, aiDifficultyLevel: int, soundEnabled: bool)
+        +clone(timeControlMinutes?: int, incrementSeconds?: int, isWhitePlayerAI?: bool, isBlackPlayerAI?: bool, aiDifficultyLevel?: int, soundEnabled?: bool) GameConfig
+        +withSwappedColors() GameConfig
+        +toJson() String
+        +fromJson(json: String) GameConfig
+    }
+    
+    %% Relationship
+    GameConfig ..|> Prototype : implements
+    
+    %% Notes
+    note for Prototype "Abstract class định nghĩa\nphương thức clone() để\ntạo bản sao của đối tượng"
+    
+    note for GameConfig "Concrete class triển khai\nPrototype pattern với:\n- Clone với tham số tùy chọn\n- Phương thức tiện ích withSwappedColors()\n- Serialization (toJson/fromJson)"

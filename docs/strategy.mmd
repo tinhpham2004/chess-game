@@ -1,0 +1,120 @@
+classDiagram
+    note "Strategy Pattern Implementation for Chess AI"
+    
+    %% Strategy Interface
+    class AIStrategy {
+        <<interface>>
+        +chooseMove(List~ChessPiece~ pieces, PieceColor aiColor) Command*
+        +getBestMoveEvaluation(List~ChessPiece~ pieces, PieceColor aiColor) MoveEvaluation*
+        +getAllValidMoves(List~ChessPiece~ pieces, PieceColor color) List~MoveEvaluation~*
+        +evaluateBoard(List~ChessPiece~ pieces, PieceColor aiColor) double*
+    }
+    
+    %% Abstract Base Strategy
+    class BaseAIStrategy {
+        <<abstract>>
+        -GameRoomMoveValidator _moveValidator
+        +BaseAIStrategy()
+        +setMoveValidator(GameRoomMoveValidator validator)
+        +getAllValidMoves(List~ChessPiece~ pieces, PieceColor color) List~MoveEvaluation~
+        +evaluateBoard(List~ChessPiece~ pieces, PieceColor aiColor) double
+        -_evaluatePositionalFactors(List~ChessPiece~ pieces, PieceColor aiColor) double
+    }
+    
+    %% Context Class
+    class ChessAIPlayer {
+        -AIStrategy _strategy
+        -GameRoomMoveValidator _moveValidator
+        +ChessAIPlayer(AIStrategy strategy)
+        +setStrategy(AIStrategy strategy)
+        +makeMove(List~ChessPiece~ pieces, PieceColor aiColor) Command
+        +getHintMove(List~ChessPiece~ pieces, PieceColor playerColor) MoveEvaluation
+        +getTopMoves(List~ChessPiece~ pieces, PieceColor playerColor, int count) List~MoveEvaluation~
+        -_simulateMove(List~ChessPiece~ pieces, Position from, Position to) List~ChessPiece~
+    }
+    
+    %% Concrete Strategies
+    class RandomAIStrategy {
+        -Random _random
+        +chooseMove(List~ChessPiece~ pieces, PieceColor aiColor) Command
+        +getBestMoveEvaluation(List~ChessPiece~ pieces, PieceColor aiColor) MoveEvaluation
+    }
+    
+    class MinimaxAIStrategy {
+        -int _depthLevel
+        +MinimaxAIStrategy(int depthLevel)
+        +chooseMove(List~ChessPiece~ pieces, PieceColor aiColor) Command
+        +getBestMoveEvaluation(List~ChessPiece~ pieces, PieceColor aiColor) MoveEvaluation
+        -_minimax(List~ChessPiece~ pieces, int depth, bool isMaximizing, PieceColor aiColor, double alpha, double beta) double
+        +simulateMove(List~ChessPiece~ pieces, Position from, Position to) List~ChessPiece~
+    }
+    
+    class AdvancedMinimaxAIStrategy {
+        -int _depthLevel
+        +AdvancedMinimaxAIStrategy(int depthLevel)
+        +chooseMove(List~ChessPiece~ pieces, PieceColor aiColor) Command
+        +getBestMoveEvaluation(List~ChessPiece~ pieces, PieceColor aiColor) MoveEvaluation
+        -_getMoveOrderScore(MoveEvaluation move) double
+        -_advancedEvaluateBoard(List~ChessPiece~ pieces, PieceColor aiColor) double
+    }
+    
+    class AdaptiveAIStrategy {
+        -List~MoveEvaluation~ _playerMoveHistory
+        -AIStrategy _baseStrategy
+        +AdaptiveAIStrategy()
+        +recordPlayerMove(MoveEvaluation move)
+        +chooseMove(List~ChessPiece~ pieces, PieceColor aiColor) Command
+        +getBestMoveEvaluation(List~ChessPiece~ pieces, PieceColor aiColor) MoveEvaluation
+        -_analyzePlayerPatterns()
+    }
+    
+    %% Supporting Classes
+    class MoveEvaluation {
+        +Position from
+        +Position to
+        +double score
+        +ChessPiece piece
+        +ChessPiece capturedPiece
+        +MoveEvaluation(Position from, Position to, double score, ChessPiece piece, ChessPiece capturedPiece)
+    }
+    
+    class Command {
+        <<interface>>
+        +execute()*
+        +undo()*
+    }
+    
+    class ChessPiece {
+        <<abstract>>
+        +PieceColor color
+        +PieceType type
+        +Position position
+        +clone() ChessPiece*
+        +getPossibleMoves(List~ChessPiece~ pieces) List~Position~*
+    }
+    
+    class GameRoomMoveValidator {
+        +validateMove(ChessPiece piece, Position from, Position to, List~ChessPiece~ pieces) bool
+    }
+    
+    %% Strategy Pattern Relationships
+    BaseAIStrategy ..|> AIStrategy : implements
+    RandomAIStrategy --|> BaseAIStrategy : extends
+    MinimaxAIStrategy --|> BaseAIStrategy : extends
+    AdvancedMinimaxAIStrategy --|> BaseAIStrategy : extends
+    AdaptiveAIStrategy --|> BaseAIStrategy : extends
+    
+    %% Context uses Strategy
+    ChessAIPlayer o-- AIStrategy : uses
+    
+    %% Supporting Relationships
+    AIStrategy ..> Command : returns
+    AIStrategy ..> MoveEvaluation : returns
+    AIStrategy ..> ChessPiece : uses
+    BaseAIStrategy --> GameRoomMoveValidator : uses
+    MoveEvaluation --> ChessPiece : contains
+    AdaptiveAIStrategy --> AIStrategy : delegates to
+    
+    %% Strategy Selection Pattern
+    AdaptiveAIStrategy ..> MinimaxAIStrategy : creates
+    AdaptiveAIStrategy ..> AdvancedMinimaxAIStrategy : creates

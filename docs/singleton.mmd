@@ -1,0 +1,26 @@
+classDiagram
+    %% Singleton Pattern - Core Implementation
+    class GameRoomRepository {
+        <<Singleton>>
+        -GameRoomRepository _instance : null$
+        -GameRoomDao _dao
+        -GameRoomRepository(GameRoomDao dao)
+        +getInstance(GameRoomDao dao)$ GameRoomRepository
+        +saveGameRoom(GameRoomEntity gameRoom) Future~void~
+        +fetchGameRoom(String id) Future~GameRoomEntity?~
+        +deleteGameRoom(String id) Future~void~
+        +clearAllGameRooms() Future~void~
+        +fetchAllGameRooms() Future~List~GameRoomEntity~~
+        +fetchGameConfig(GameRoomEntity gameRoom) Future~GameConfig?~
+        +dispose() void
+        +isInitialized() bool
+    }
+
+    %% Self-reference showing singleton instance creation
+    GameRoomRepository ..> GameRoomRepository : creates single instance
+
+    %% Styling for singleton emphasis
+    classDef singleton fill:#ff9999,stroke:#cc0000,stroke-width:4px,color:#000
+
+
+    %% Note explaining Singleton Pattern characteristics
