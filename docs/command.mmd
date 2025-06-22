@@ -1,0 +1,191 @@
+---
+title: Chess Game Command Pattern - Core Components
+query: hãy sửa lại sao cho nó giữ lại các cái thành phần chính của mẫu command
+references:
+  - "File: /docs/command.mmd"
+generationTime: 2025-06-22T13:33:34.861Z
+---
+classDiagram
+    %% Command Pattern Core Interface
+    class Command {
+        <<interface>>
+        +execute() void
+        +undo() void
+        +redo() void
+    }
+
+    %% Essential Models for Commands
+    class ChessPiece {
+        +Position position
+        +PieceType type
+        +PlayerColor color
+        +clone() ChessPiece
+    }
+
+    class Position {
+        +int row
+        +int col
+        +clone() Position
+        +equals(Position) bool
+    }
+
+    %% Receiver - ChessBoardManager
+    class ChessBoardManager {
+        -Map~Position,ChessPiece~ board
+        -PlayerColor currentTurn
+        +movePiece(Position, Position) ChessPiece?
+        +setPieceAt(Position, ChessPiece?) void
+        +getPieceAt(Position) ChessPiece?
+        +switchTurn() void
+        +saveCurrentState() void
+        +undo() void
+        +redo() void
+        +canUndo() bool
+        +canRedo() bool
+    }
+
+    %% Concrete Commands - Core Chess Moves
+    class MoveCommand {
+        -ChessPiece piece
+        -Position newPosition
+        -Position oldPosition
+        -ChessPiece? capturedPiece
+        -ChessBoardManager? boardManager
+        +execute() void
+        +undo() void
+        +redo() void
+    }
+
+    class AIMoveCommand {
+        -ChessPiece piece
+        -Position from
+        -Position to
+        -Position oldPosition
+        -ChessPiece? capturedPiece
+        -ChessBoardManager? boardManager
+        +execute() void
+        +undo() void
+        +redo() void
+    }
+
+    class CastleCommand {
+        -ChessPiece rook
+        -ChessPiece king
+        -Position newRookPosition
+        -Position newKingPosition
+        -Position oldRookPosition
+        -Position oldKingPosition
+        -ChessBoardManager? boardManager
+        +execute() void
+        +undo() void
+        +redo() void
+    }
+
+    class PromoteCommand {
+        -ChessPiece newPiece
+        -ChessPiece oldPiece
+        -Position newPosition
+        -Position oldPosition
+        -ChessBoardManager? boardManager
+        +execute() void
+        +undo() void
+        +redo() void
+    }
+
+    class EnPassantCommand {
+        -ChessPiece pawn
+        -Position from
+        -Position to
+        -ChessPiece capturedPawn
+        -Position capturedPawnPosition
+        -Position oldPawnPosition
+        -ChessBoardManager? boardManager
+        +execute() void
+        +undo() void
+        +redo() void
+    }
+
+    %% Invoker - Command Manager
+    class GameRoomCommandManager {
+        -List~Command~ commandHistory
+        -int currentIndex
+        -ChessBoardManager? boardManager
+        +executeCommand(Command) void
+        +undo() void
+        +redo() void
+        +canUndo() bool
+        +canRedo() bool
+        +reset() void
+        +executeMove(ChessPiece, Position, ChessPiece?) void
+        +executeAIMove(ChessPiece, Position, Position, ChessPiece?) void
+        +executeCastle(ChessPiece, ChessPiece, Position, Position) void
+        +executePromotion(ChessPiece, ChessPiece, Position) void
+        +executeEnPassant(ChessPiece, Position, Position, ChessPiece, Position) void
+    }
+
+    %% Essential Enums
+    class PieceType {
+        <<enumeration>>
+        PAWN
+        ROOK
+        KNIGHT
+        BISHOP
+        QUEEN
+        KING
+    }
+
+    class PlayerColor {
+        <<enumeration>>
+        WHITE
+        BLACK
+    }
+
+    %% Command Pattern Core Relationships
+    Command <|.. MoveCommand : implements
+    Command <|.. AIMoveCommand : implements
+    Command <|.. CastleCommand : implements
+    Command <|.. PromoteCommand : implements
+    Command <|.. EnPassantCommand : implements
+
+    %% Invoker manages Commands
+    GameRoomCommandManager o-- Command : "manages history"
+    GameRoomCommandManager --> ChessBoardManager : "uses as receiver"
+
+    %% Commands use Models
+    MoveCommand --> ChessPiece : "operates on"
+    MoveCommand --> Position : "uses"
+    MoveCommand --> ChessBoardManager : "delegates to"
+
+    AIMoveCommand --> ChessPiece : "operates on"
+    AIMoveCommand --> Position : "uses"
+    AIMoveCommand --> ChessBoardManager : "delegates to"
+
+    CastleCommand --> ChessPiece : "moves king & rook"
+    CastleCommand --> Position : "uses"
+    CastleCommand --> ChessBoardManager : "delegates to"
+
+    PromoteCommand --> ChessPiece : "replaces pawn"
+    PromoteCommand --> Position : "uses"
+    PromoteCommand --> ChessBoardManager : "delegates to"
+
+    EnPassantCommand --> ChessPiece : "captures pawn"
+    EnPassantCommand --> Position : "uses"
+    EnPassantCommand --> ChessBoardManager : "delegates to"
+
+    %% Model relationships
+    ChessPiece --> Position : "has position"
+    ChessPiece --> PieceType : "has type"
+    ChessPiece --> PlayerColor : "belongs to"
+
+    %% Styling for Command Pattern Components
+    classDef commandInterface fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#000
+    classDef concreteCommand fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    classDef invoker fill:#e8f5e8,stroke:#388e3c,stroke-width:3px,color:#000
+    classDef receiver fill:#fff3e0,stroke:#f57c00,stroke-width:3px,color:#000
+    classDef model fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#000
+    classDef enum fill:#f1f8e9,stroke:#689f38,stroke-width:2px,color:#000
+
+    %% Command Pattern Notes
+    note for Command "Command Interface - Defines execute(), undo(), redo() - Core of Command Pattern"
+    note for GameRoomCommandManager "Invoker - Manages command history - Provides undo/redo functionality"
+    note for ChessBoardManager "Receiver - Performs actual chess operations - Maintains game state"

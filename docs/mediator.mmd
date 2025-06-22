@@ -1,0 +1,237 @@
+classDiagram
+    note "Mediator Pattern Implementation for Chess Game UI Coordination"
+    
+    %% Mediator Interface
+    class UIMediator {
+        <<interface>>
+        +notify(UIComponent sender, String event, Map~String,dynamic~ data)*
+    }
+    
+    %% Concrete Mediator
+    class ChessGameMediator {
+        -ChessBoardComponent _chessBoard
+        -MoveHistoryComponent _moveHistory
+        -ControlPanelComponent _controlPanel
+        -ChatPanelComponent _chatPanel
+        +ChessGameMediator(ChessBoardComponent chessBoard, MoveHistoryComponent moveHistory, ControlPanelComponent controlPanel, ChatPanelComponent chatPanel)
+        +notify(UIComponent sender, String event, Map~String,dynamic~ data)
+        -_handleBoardChanged(UIComponent sender, Map~String,dynamic~ data)
+        -_handleMoveRecorded(UIComponent sender, Map~String,dynamic~ data)
+        -_handleUndoRequested(UIComponent sender, Map~String,dynamic~ data)
+        -_handleRestartRequested(UIComponent sender, Map~String,dynamic~ data)
+        -_handleHintRequested(UIComponent sender, Map~String,dynamic~ data)
+        -_handleSquareTapped(UIComponent sender, Map~String,dynamic~ data)
+        -_handlePieceDropped(UIComponent sender, Map~String,dynamic~ data)
+        -_handleMessageReceived(UIComponent sender, Map~String,dynamic~ data)
+        -_handleMessageSent(UIComponent sender, Map~String,dynamic~ data)
+        -_handleGameOver(UIComponent sender, Map~String,dynamic~ data)
+        +notifyBoardChanged()
+        +notifyMoveRecorded(String move, String player)
+        +notifyGameStarted()
+        +notifyGameOver(String winner)
+        +sendChatMessage(String message, String sender)
+        +chessBoard ChessBoardComponent
+        +moveHistory MoveHistoryComponent
+        +controlPanel ControlPanelComponent
+        +chatPanel ChatPanelComponent
+    }
+    
+    %% Abstract UI Component
+    class UIComponent {
+        <<abstract>>
+        #UIMediator _mediator
+        +Function onStateChanged
+        +setMediator(UIMediator mediator)
+        +mediator UIMediator
+        +notifyStateChanged()
+    }
+    
+    %% Concrete Components - Colleagues
+    class ChessBoardComponent {
+        -bool _isGameOver
+        -String _gameOverReason
+        -Position _selectedPosition
+        -String _hintMove
+        -List~List~ChessPiece~~ _board
+        -List~List~bool~~ _possibleMoves
+        -bool _isWhitesTurn
+        -bool _gameEnded
+        -Position _hintFromPosition
+        -Position _hintToPosition
+        +updateBoard()
+        +updateGameState(List~List~ChessPiece~~ board, Position selectedPosition, List~List~bool~~ possibleMoves, bool isWhitesTurn, bool gameEnded)
+        +onSquareSelected(Position position)
+        +makeMove(Position from, Position to) bool
+        +performUndo()
+        +restartGame()
+        +showHint()
+        +canUndo() bool
+        +isGameOver() bool
+        +selectedPosition Position
+        +board List~List~ChessPiece~~
+        +possibleMoves List~List~bool~~
+        +isWhitesTurn bool
+        +gameEnded bool
+    }
+    
+    class MoveHistoryComponent {
+        -List~String~ _moves
+        +addMove(String move)
+        +removeLastMove()
+        +clear()
+        +updateFromBoard()
+        +selectMove(int index)
+        +updateMoveHistory(List~String~ moveHistory)
+        +moves List~String~
+    }
+    
+    class ControlPanelComponent {
+        -bool _undoEnabled
+        -bool _gameOver
+        -bool _hintEnabled
+        +restartGame()
+        +onUndoPressed()
+        +onHintPressed()
+        +updateButtons(bool canUndo, bool isGameOver)
+        +updateGameState(bool canUndo, bool gameEnded, bool isWhitesTurn)
+        +undoEnabled bool
+        +gameOver bool
+        +hintEnabled bool
+    }
+    
+    class ChatPanelComponent {
+        -List~ChatMessage~ _messages
+        -bool _isConnected
+        +sendMessage(String message, String sender)
+        +receiveMessage(String message, String sender)
+        +clearMessages()
+        +setConnectionStatus(bool isConnected)
+        +broadcastSystemMessage(String message)
+        +notifyGameEvent(String event, Map~String,dynamic~ data)
+        +messages List~ChatMessage~
+        +isConnected bool
+    }
+    
+    %% Supporting Classes
+    class ChatMessage {
+        +String sender
+        +String message
+        +DateTime timestamp
+        +ChatMessage(String sender, String message, DateTime timestamp)
+    }
+    
+    class GameEvents {
+        <<utility>>
+        +boardChanged String$
+        +squareTapped String$
+        +pieceDropped String$
+        +moveRecorded String$
+        +undoRequested String$
+        +restartRequested String$
+        +hintRequested String$
+        +gameOver String$
+        +gameStarted String$
+        +gamePaused String$
+        +gameResumed String$
+        +messageReceived String$
+        +messageSent String$
+        +messagesCleared String$
+        +timerStarted String$
+        +timerSwitched String$
+        +timerTick String$
+        +timerExpired String$
+    }
+    
+    %% BLoC Integration
+    class GameMediatorBloc {
+        -ChessGameMediator _mediator
+        -ChessBoardComponent _chessBoardComponent
+        -MoveHistoryComponent _moveHistoryComponent
+        -ControlPanelComponent _controlPanelComponent
+        -ChatPanelComponent _chatPanelComponent
+        -GameRoomBloc _gameRoomBloc
+        +GameMediatorBloc(GameRoomBloc gameRoomBloc)
+        -_initializeComponents()
+        -_setupEventHandlers()
+        -_subscribeToCoreBloc()
+        +chessBoardComponent ChessBoardComponent
+        +moveHistoryComponent MoveHistoryComponent
+        +controlPanelComponent ControlPanelComponent
+        +chatPanelComponent ChatPanelComponent
+    }
+    
+    class GameMediatorState {
+        <<abstract>>
+    }
+    
+    class BoardInteractionState {
+        +Position position
+        +BoardInteractionState(Position position)
+    }
+    
+    class GameMediatorEvent {
+        <<abstract>>
+    }
+    
+    class BoardSquareTappedEvent {
+        +Position position
+        +BoardSquareTappedEvent(Position position)
+    }
+    
+    %% Supporting Model Classes
+    class Position {
+        +int x
+        +int y
+        +Position(int x, int y)
+    }
+    
+    class ChessPiece {
+        <<abstract>>
+        +PieceColor color
+        +PieceType type
+        +Position position
+    }
+    
+    class GameRoomBloc {
+        <<external>>
+    }
+    
+    %% Mediator Pattern Relationships
+    ChessGameMediator ..|> UIMediator : implements
+    UIComponent o-- UIMediator : _mediator
+    ChessBoardComponent --|> UIComponent : extends
+    MoveHistoryComponent --|> UIComponent : extends
+    ControlPanelComponent --|> UIComponent : extends
+    ChatPanelComponent --|> UIComponent : extends
+    
+    %% Mediator manages Components
+    ChessGameMediator --> ChessBoardComponent : manages
+    ChessGameMediator --> MoveHistoryComponent : manages
+    ChessGameMediator --> ControlPanelComponent : manages
+    ChessGameMediator --> ChatPanelComponent : manages
+    
+    %% BLoC Integration
+    GameMediatorBloc --> ChessGameMediator : uses
+    GameMediatorBloc --> ChessBoardComponent : accesses
+    GameMediatorBloc --> MoveHistoryComponent : accesses
+    GameMediatorBloc --> ControlPanelComponent : accesses
+    GameMediatorBloc --> ChatPanelComponent : accesses
+    GameMediatorBloc --> GameRoomBloc : delegates to
+    
+    %% Supporting Relationships
+    ChatPanelComponent o-- ChatMessage : contains
+    ChessGameMediator ..> GameEvents : uses
+    UIComponent ..> GameEvents : uses
+    ChessBoardComponent ..> Position : uses
+    ChessBoardComponent ..> ChessPiece : manages
+    
+    %% State Management
+    GameMediatorBloc --> GameMediatorState : emits
+    GameMediatorBloc --> GameMediatorEvent : handles
+    BoardInteractionState --|> GameMediatorState : extends
+    BoardSquareTappedEvent --|> GameMediatorEvent : extends
+    
+    %% Communication Flow Notes
+    note for ChessGameMediator "Centralized communication hub for all UI components"
+    note for UIComponent "Base class for all UI components that need mediation"
+    note for GameMediatorBloc "BLoC wrapper that integrates Mediator with Flutter state management"

@@ -1,0 +1,226 @@
+---
+title: Factory Method Pattern - Chess Game Color Theme System
+query: hãy tạo sơ đồ lớp cho các thành phần chính trong mẫu thiết kế factory method
+  có trong thư mục trên, chỉ giữ lại các lớp liên quan đến mẫu
+references:
+  - "File: /lib/theme/color"
+generationTime: 2025-06-22T13:42:11.453Z
+---
+classDiagram
+    %% Factory Method Pattern Core Components
+    class AppColorFactory {
+        <<abstract>>
+        +createColor() IAppColor*
+    }
+    
+    class AppLightColorFactory {
+        +createColor() IAppColor
+    }
+    
+    class AppDarkColorFactory {
+        +createColor() IAppColor
+    }
+    
+    %% Product Interface and Implementations
+    class IAppColor {
+        <<interface>>
+        +primaryColor Color*
+        +primaryVariant Color*
+        +secondaryColor Color*
+        +backgroundColor Color*
+        +surfaceColor Color*
+        +onPrimaryColor Color*
+        +onSecondaryColor Color*
+        +onBackgroundColor Color*
+        +onSurfaceColor Color*
+        +errorColor Color*
+        +textPrimaryColor Color*
+        +textSecondaryColor Color*
+        +borderColor Color*
+    }
+    
+    class AppLightColor {
+        +primaryColor Color
+        +primaryVariant Color
+        +secondaryColor Color
+        +backgroundColor Color
+        +surfaceColor Color
+        +onPrimaryColor Color
+        +onSecondaryColor Color
+        +onBackgroundColor Color
+        +onSurfaceColor Color
+        +errorColor Color
+        +textPrimaryColor Color
+        +textSecondaryColor Color
+        +borderColor Color
+    }
+    
+    class AppDarkColor {
+        +primaryColor Color
+        +primaryVariant Color
+        +secondaryColor Color
+        +backgroundColor Color
+        +surfaceColor Color
+        +onPrimaryColor Color
+        +onSecondaryColor Color
+        +onBackgroundColor Color
+        +onSurfaceColor Color
+        +errorColor Color
+        +textPrimaryColor Color
+        +textSecondaryColor Color
+        +borderColor Color
+    }
+    
+    %% Color Palette Classes
+    class PrimaryColors {
+        <<enumeration>>
+        +vibrant Color$
+        +vibrantVariant Color$
+        +twilight Color$
+        +twilightVariant Color$
+    }
+    
+    class SecondaryColors {
+        <<enumeration>>
+        +sunlight Color$
+        +eclipse Color$
+    }
+    
+    class BackgroundColors {
+        <<enumeration>>
+        +luminous Color$
+        +midnight Color$
+    }
+    
+    class SurfaceColors {
+        <<enumeration>>
+        +daySurface Color$
+        +nightSurface Color$
+    }
+    
+    class TextColors {
+        <<enumeration>>
+        +dayPrimaryText Color$
+        +daySecondaryText Color$
+        +nightPrimaryText Color$
+        +nightSecondaryText Color$
+    }
+    
+    class ErrorColors {
+        <<enumeration>>
+        +dayError Color$
+        +nightError Color$
+    }
+    
+    class BorderColors {
+        <<enumeration>>
+        +dayBorder Color$
+        +nightBorder Color$
+    }
+    
+    class AppColors {
+        +primary PrimaryColors$
+        +secondary SecondaryColors$
+        +background BackgroundColors$
+        +surface SurfaceColors$
+        +text TextColors$
+        +error ErrorColors$
+        +border BorderColors$
+    }
+    
+    %% Flutter Framework Dependencies
+    class Color {
+        <<Flutter>>
+        +value int
+        +alpha int
+        +red int
+        +green int
+        +blue int
+        +opacity double
+        +withAlpha(int a) Color
+        +withRed(int red) Color
+        +withGreen(int green) Color
+        +withBlue(int blue) Color
+        +withOpacity(double opacity) Color
+    }
+    
+    class Colors {
+        <<Flutter>>
+        +white Color$
+        +black Color$
+        +transparent Color$
+        +red Color$
+        +green Color$
+        +blue Color$
+    }
+    
+    %% Factory Method Pattern Relationships
+    AppColorFactory <|.. AppLightColorFactory : implements
+    AppColorFactory <|.. AppDarkColorFactory : implements
+    
+    %% Product Relationships
+    IAppColor <|.. AppLightColor : implements
+    IAppColor <|.. AppDarkColor : implements
+    
+    %% Factory Creates Product
+    AppLightColorFactory ..> AppLightColor : creates
+    AppDarkColorFactory ..> AppDarkColor : creates
+    
+    %% Color Dependencies
+    AppLightColor ..> PrimaryColors : uses
+    AppLightColor ..> SecondaryColors : uses
+    AppLightColor ..> BackgroundColors : uses
+    AppLightColor ..> SurfaceColors : uses
+    AppLightColor ..> TextColors : uses
+    AppLightColor ..> ErrorColors : uses
+    AppLightColor ..> BorderColors : uses
+    AppLightColor ..> Colors : uses
+    
+    AppDarkColor ..> PrimaryColors : uses
+    AppDarkColor ..> SecondaryColors : uses
+    AppDarkColor ..> BackgroundColors : uses
+    AppDarkColor ..> SurfaceColors : uses
+    AppDarkColor ..> TextColors : uses
+    AppDarkColor ..> ErrorColors : uses
+    AppDarkColor ..> BorderColors : uses
+    AppDarkColor ..> Colors : uses
+    
+    %% Color Template Aggregation
+    AppColors *-- PrimaryColors : contains
+    AppColors *-- SecondaryColors : contains
+    AppColors *-- BackgroundColors : contains
+    AppColors *-- SurfaceColors : contains
+    AppColors *-- TextColors : contains
+    AppColors *-- ErrorColors : contains
+    AppColors *-- BorderColors : contains
+    
+    %% All color classes depend on Flutter's Color
+    PrimaryColors ..> Color : uses
+    SecondaryColors ..> Color : uses
+    BackgroundColors ..> Color : uses
+    SurfaceColors ..> Color : uses
+    TextColors ..> Color : uses
+    ErrorColors ..> Color : uses
+    BorderColors ..> Color : uses
+    
+    %% Return type relationships
+    AppColorFactory ..> IAppColor : returns
+    IAppColor ..> Color : returns
+    
+    %% Notes for pattern explanation
+    note for AppColorFactory "Abstract Factory defines\nthe factory method interface\nfor creating color themes"
+    
+    note for IAppColor "Product interface defining\nthe contract for all\ncolor theme implementations"
+    
+    note for AppLightColorFactory "Concrete Factory for\ncreating light theme colors\nusing predefined color palettes"
+    
+    note for AppDarkColorFactory "Concrete Factory for\ncreating dark theme colors\nusing predefined color palettes"
+    
+    note "Factory Method Pattern Implementation\nfor Chess Game Color Theme System\n\nPattern Benefits:\n- Easy theme switching\n- Consistent color interface\n- Extensible for new themes\n- Separation of concerns"
+    
+    %% Styling for better visualization
+    classDef factoryClass fill:#E3F2FD,stroke:#1976D2,stroke-width:3px,color:#000
+    classDef productClass fill:#F3E5F5,stroke:#7B1FA2,stroke-width:3px,color:#000
+    classDef colorClass fill:#E8F5E8,stroke:#388E3C,stroke-width:2px,color:#000
+    classDef flutterClass fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#000
+    classDef interfaceClass fill:#FCE4EC,stroke:#C2185B,stroke-width:3px,color:#000

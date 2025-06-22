@@ -1,0 +1,119 @@
+classDiagram
+    %% Product - Sản phẩm được tạo ra
+    class GameConfig {
+        <<Product>>
+        -int timeControlMinutes
+        -int incrementSeconds
+        -bool soundEnabled
+        -int aiLevel
+        -bool isWhiteAI
+        -bool isBlackAI
+        -String gameMode
+        +GameConfig(...)
+        +getTimeControlMinutes() int
+        +getIncrementSeconds() int
+        +isSoundEnabled() bool
+        +getAiLevel() int
+        +toString() String
+        +toJson() Map
+        +isValidConfiguration() bool
+    }
+
+    %% Builder Interface - Giao diện Builder
+    class IGameConfigBuilder {
+        <<Interface>>
+        +setTimeControl(minutes, increment) IGameConfigBuilder*
+        +setPlayerTypes(isWhiteAI, isBlackAI) IGameConfigBuilder*
+        +setDifficultyLevel(level) IGameConfigBuilder*
+        +setSoundEnabled(enabled) IGameConfigBuilder*
+        +setGameMode(mode) IGameConfigBuilder*
+        +reset() IGameConfigBuilder*
+        +build() GameConfig*
+        +clone() IGameConfigBuilder*
+    }
+
+    %% Concrete Builder - Builder cụ thể
+    class GameConfigBuilder {
+        <<ConcreteBuilder>>
+        -int _timeControlMinutes
+        -int _incrementSeconds
+        -bool _soundEnabled
+        -int _aiLevel
+        -bool _isWhiteAI
+        -bool _isBlackAI
+        -String _gameMode
+        +GameConfigBuilder()
+        +setTimeControl(minutes, increment) IGameConfigBuilder
+        +setPlayerTypes(isWhiteAI, isBlackAI) IGameConfigBuilder
+        +setDifficultyLevel(level) IGameConfigBuilder
+        +setSoundEnabled(enabled) IGameConfigBuilder
+        +setGameMode(mode) IGameConfigBuilder
+        +reset() IGameConfigBuilder
+        +build() GameConfig
+        +clone() IGameConfigBuilder
+        -_validateTimeControl() void
+        -_validateAILevel() void
+    }
+
+    %% Director Interface - Giao diện Director
+    class IGameConfigDirector {
+        <<Interface>>
+        +setBuilder(builder) void*
+        +buildBulletGameConfig(...) GameConfig*
+        +buildBlitzGameConfig(...) GameConfig*
+        +buildClassicGameConfig(...) GameConfig*
+        +createCustomConfig(...) GameConfig*
+        +buildGameConfig() GameConfig*
+    }
+
+    %% Concrete Director - Director cụ thể
+    class GameConfigDirector {
+        <<ConcreteDirector>>
+        -IGameConfigBuilder _builder
+        +GameConfigDirector(builder)
+        +setBuilder(builder) void
+        +buildBulletGameConfig(...) GameConfig
+        +buildBlitzGameConfig(...) GameConfig
+        +buildClassicGameConfig(...) GameConfig
+        +createCustomConfig(...) GameConfig
+        +buildGameConfig() GameConfig
+        -_buildWithDefaults(...) GameConfig
+        -_validateBuilderExists() void
+    }
+
+    %% Game Type Enum
+    class GameType {
+        <<Enumeration>>
+        BULLET
+        BLITZ
+        RAPID
+        CLASSIC
+        CUSTOM
+        +toString() String
+        +getDefaultMinutes() int
+        +getDefaultIncrement() int
+    }
+
+    %% Relationships - Mối quan hệ trong Builder Pattern
+    IGameConfigBuilder <|.. GameConfigBuilder : implements
+    IGameConfigDirector <|.. GameConfigDirector : implements
+    
+    %% Director sử dụng Builder
+    GameConfigDirector o--> IGameConfigBuilder : uses
+    GameConfigDirector ..> GameConfig : creates
+    
+    %% Builder tạo ra Product
+    GameConfigBuilder ..> GameConfig : builds
+    
+    %% Enum được sử dụng
+    GameConfigDirector --> GameType : uses
+    GameConfig --> GameType : references
+
+    %% Styling cho các loại lớp khác nhau
+    classDef product fill:#e8f5e8,stroke:#1b5e20,stroke-width:3px
+    classDef builderInterface fill:#e1f5fe,stroke:#01579b,stroke-width:3px
+    classDef concreteBuilder fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef directorInterface fill:#fff3e0,stroke:#e65100,stroke-width:3px
+    classDef concreteDirector fill:#fff8e1,stroke:#ff6f00,stroke-width:2px
+    classDef enumeration fill:#f1f8e9,stroke:#33691e,stroke-width:2px
+

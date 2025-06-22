@@ -1,0 +1,127 @@
+classDiagram
+    note "Memento Pattern Implementation for Chess Game State Management"
+    
+    %% Memento Class
+    class GameMemento {
+        -List~Map~String,dynamic~~ _pieceStates
+        -PieceColor _currentTurn
+        -bool _isWhiteKingInCheck
+        -bool _isBlackKingInCheck
+        +GameMemento(List~Map~String,dynamic~~ pieceStates, PieceColor currentTurn, bool isWhiteKingInCheck, bool isBlackKingInCheck)
+        +fromJson(String json) GameMemento$
+        +toJson() String
+        +pieceStates List~Map~String,dynamic~~
+        +currentTurn PieceColor
+        +isWhiteKingInCheck bool
+        +isBlackKingInCheck bool
+    }
+    
+    %% Caretaker Class
+    class GameHistory {
+        -List~GameMemento~ _mementos
+        -int _currentIndex
+        +addMemento(GameMemento memento)
+        +getPreviousMemento() GameMemento
+        +getNextMemento() GameMemento
+        +canUndo() bool
+        +canRedo() bool
+        +clearHistory()
+    }
+    
+    %% Originator Class
+    class ChessBoard {
+        +List~ChessPiece~ pieces
+        +PieceColor currentTurn
+        +bool isWhiteKingInCheck
+        +bool isBlackKingInCheck
+        -GameHistory _history
+        -CommandInvoker _commandInvoker
+        +createMemento() GameMemento
+        +restoreFromMemento(GameMemento memento)
+        +saveState()
+        +undo() bool
+        +redo() bool
+        +executeCommand(Command command)
+    }
+    
+    %% Supporting Classes for Command Pattern Integration
+    class CommandInvoker {
+        -List~Command~ _commandHistory
+        -int _currentIndex
+        +canUndo bool
+        +canRedo bool
+        +executeCommand(Command command)
+        +undo()
+        +redo()
+        +reset()
+    }
+    
+    class Command {
+        <<interface>>
+        +execute()*
+        +undo()*
+    }
+    
+    %% Supporting Model Classes
+    class ChessPiece {
+        <<abstract>>
+        +PieceColor color
+        +PieceType type
+        +Position position
+        +clone() ChessPiece*
+    }
+    
+    class Pawn {
+        +bool hasMoved
+        +Pawn(PieceColor color, Position position)
+    }
+    
+    class Position {
+        +int x
+        +int y
+        +Position(int x, int y)
+        +clone() Position
+    }
+    
+    class PieceColor {
+        <<enumeration>>
+        white
+        black
+    }
+    
+    class PieceType {
+        <<enumeration>>
+        pawn
+        rook
+        knight
+        bishop
+        queen
+        king
+    }
+    
+    %% Memento Pattern Relationships
+    ChessBoard --> GameMemento : creates
+    ChessBoard --> GameHistory : uses
+    GameHistory o-- GameMemento : stores
+    ChessBoard ..> GameMemento : restores from
+    
+    %% Command Pattern Integration
+    ChessBoard --> CommandInvoker : uses
+    CommandInvoker o-- Command : stores
+    
+    %% Supporting Relationships
+    ChessBoard o-- ChessPiece : contains
+    GameMemento ..> PieceColor : stores
+    ChessPiece --> Position : has
+    ChessPiece --> PieceType : has
+    ChessPiece --> PieceColor : has
+    Pawn --|> ChessPiece : extends
+    
+    %% Data Flow
+    GameMemento ..> Position : serializes
+    GameMemento ..> PieceType : serializes
+    
+    %% Memento Pattern Notes
+    note for GameMemento "Stores immutable snapshot of game state"
+    note for GameHistory "Manages memento collection and navigation"
+    note for ChessBoard "Creates and restores from mementos"
